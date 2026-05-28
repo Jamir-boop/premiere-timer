@@ -1,0 +1,55 @@
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+
+describe("manifest", () => {
+  it("uses Chrome MV3 service worker, popup, side panel, and empty commands", () => {
+    const manifest = JSON.parse(fs.readFileSync("extension/manifest.json", "utf8"));
+
+    assert.equal(manifest.manifest_version, 3);
+    assert.deepEqual(manifest.permissions.sort(), ["activeTab", "alarms", "scripting", "sidePanel", "storage"]);
+    assert.deepEqual(manifest.optional_host_permissions, ["https://steamcommunity.com/*"]);
+    assert.equal(manifest.action.default_popup, "popup.html");
+    assert.equal(manifest.side_panel.default_path, "sidebar.html");
+    assert.equal(manifest.background.service_worker, "background.js");
+    assert.equal(manifest.background.scripts, undefined);
+    assert.equal(manifest.commands._execute_action.description, "Open popup");
+    assert.equal(manifest.commands["open-sidebar"].description, "Open sidebar");
+    assert.equal(manifest.commands._execute_action.suggested_key, undefined);
+    assert.equal(manifest.commands["open-sidebar"].suggested_key, undefined);
+  });
+
+  it("uses Firefox background scripts without Chrome sidePanel permission", () => {
+    const manifest = JSON.parse(fs.readFileSync("extension/manifest.firefox.json", "utf8"));
+
+    assert.equal(manifest.manifest_version, 3);
+    assert.deepEqual(manifest.permissions.sort(), ["activeTab", "alarms", "scripting", "storage"]);
+    assert.equal(manifest.permissions.includes("sidePanel"), false);
+    assert.equal(manifest.action.default_popup, "popup.html");
+    assert.equal(manifest.sidebar_action.default_panel, "sidebar.html");
+    assert.equal(manifest.side_panel, undefined);
+    assert.deepEqual(manifest.background.scripts, ["background.js"]);
+    assert.equal(manifest.background.service_worker, undefined);
+    assert.equal(manifest.commands._execute_action.suggested_key, undefined);
+    assert.equal(manifest.commands["open-sidebar"].suggested_key, undefined);
+  });
+
+  it("builds Chrome and Firefox extension outputs", () => {
+    execFileSync(process.execPath, ["scripts/build-extension.mjs"], { stdio: "pipe" });
+
+    const chromeManifest = JSON.parse(fs.readFileSync("dist/chrome/manifest.json", "utf8"));
+    const firefoxManifest = JSON.parse(fs.readFileSync("dist/firefox/manifest.json", "utf8"));
+
+    assert.equal(chromeManifest.background.service_worker, "background.js");
+    assert.equal(chromeManifest.background.scripts, undefined);
+    assert.equal(chromeManifest.side_panel.default_path, "sidebar.html");
+    assert.deepEqual(firefoxManifest.background.scripts, ["background.js"]);
+    assert.equal(firefoxManifest.background.service_worker, undefined);
+    assert.equal(firefoxManifest.sidebar_action.default_panel, "sidebar.html");
+    assert.equal(fs.existsSync("dist/chrome/popup.html"), true);
+    assert.equal(fs.existsSync("dist/chrome/sidebar.html"), true);
+    assert.equal(fs.existsSync("dist/firefox/popup.html"), true);
+    assert.equal(fs.existsSync("dist/firefox/sidebar.html"), true);
+  });
+});

@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Premiere Timer",
+  "version": "1.0.0",
+  "description": "Local CS2 Premier CS Rating expiry timer using Steam Personal Game Data.",
+  "minimum_chrome_version": "121",
+  "permissions": [
+    "activeTab",
+    "alarms",
+    "scripting",
+    "sidePanel",
+    "storage"
+  ],
+  "optional_host_permissions": [
+    "https://steamcommunity.com/*"
+  ],
+  "action": {
+    "default_title": "Premiere Timer",
+    "default_popup": "popup.html"
+  },
+  "side_panel": {
+    "default_path": "sidebar.html"
+  },
+  "commands": {
+    "_execute_action": {
+      "description": "Open popup"
+    },
+    "open-sidebar": {
+      "description": "Open sidebar"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  }
+}
