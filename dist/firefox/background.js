@@ -1,7 +1,13 @@
 import { getBadgeInfo, getTimerState, normalizeRating } from "./lib/calc.js";
-import { ext, getStorage, hasPermission, setStorage } from "./lib/ext-api.js";
+import { ext, getStorage, hasApiPermission, hasPermission, setStorage } from "./lib/ext-api.js";
 import { badgeTitle, createTranslator, getBrowserLanguageCandidates, normalizeLanguagePreference } from "./lib/i18n.js";
 import { parseSteamGcpdMatchHistory, parseSteamGcpdMatchmakingRating } from "./lib/parser.js";
+import {
+  EXPIRY_REMINDER_ALARM,
+  getReminderPlans,
+  getReminderTypeByAlarm,
+  SAFE_REMINDER_ALARM
+} from "./lib/reminders.js";
 import {
   applyLatestMatch,
   applyPatch,
@@ -18,6 +24,7 @@ import {
 
 const CONTENT_SCRIPT_ID = "steam-gcpd-auto-update";
 const REPOSITORY_URL = "https://github.com/Jamir-boop/premiere-timer";
+const NOTIFICATIONS_PERMISSION = "notifications";
 const guidedTabs = new Map();
 
 async function loadState() {
@@ -25,9 +32,10 @@ async function loadState() {
 }
 
 async function saveState(state) {
-  await setStorage(state);
-  await updateBadge(state);
-  return state;
+  const next = await applyReminderSchedule(state);
+  await setStorage(next);
+  await updateBadge(next);
+  return next;
 }
 
 async function updateBadge(state = null) {
@@ -49,6 +57,83 @@ function createBackgroundTranslator(state) {
     state?.languagePreference,
     getBrowserLanguageCandidates([ext.i18n?.getUILanguage?.()])
   );
+}
+
+async function applyReminderSchedule(state, now = new Date()) {
+  await clearReminderAlarms();
+
+  if (!state.remindersEnabled) {
+    return state;
+  }
+
+  if (!ext.notifications?.create || !await hasApiPermission(NOTIFICATIONS_PERMISSION).catch(() => false)) {
+    return { ...state, remindersEnabled: false };
+  }
+
+  let next = state;
+  const translator = createBackgroundTranslator(state);
+  for (const plan of getReminderPlans(next, now)) {
+    if (plan.action === "schedule") {
+      await ext.alarms.create(plan.alarmName, { when: plan.reminderAtMs });
+    }
+    if (plan.action === "notify" && await sendReminderNotification(plan, translator)) {
+      next = { ...next, [plan.sentField]: plan.key };
+    }
+  }
+  return next;
+}
+
+async function clearReminderAlarms() {
+  await Promise.all([
+    ext.alarms.clear(SAFE_REMINDER_ALARM),
+    ext.alarms.clear(EXPIRY_REMINDER_ALARM)
+  ].map((operation) => operation.catch(() => false)));
+}
+
+async function applyReminderScheduleFromStorage() {
+  const state = await loadState();
+  const next = await applyReminderSchedule(state);
+  if (next !== state) {
+    await setStorage(next);
+  }
+  await updateBadge(next);
+}
+
+async function handleReminderAlarm(alarmName) {
+  if (!getReminderTypeByAlarm(alarmName)) {
+    return false;
+  }
+  await applyReminderScheduleFromStorage();
+  return true;
+}
+
+async function sendReminderNotification(plan, translator) {
+  const titleKey = plan.type === "safe" ? "safeReminderTitle" : "expiryReminderTitle";
+  const messageKey = plan.type === "safe" ? "safeReminderMessage" : "expiryReminderMessage";
+  const deadline = formatNotificationDate(plan.deadlineAt, translator.language);
+
+  try {
+    await ext.notifications.create(`premiere-timer-${plan.type}-${plan.deadlineAt}`, {
+      type: "basic",
+      iconUrl: "icons/icon-128.png",
+      title: translator.t(titleKey),
+      message: translator.t(messageKey, { date: deadline })
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function formatNotificationDate(value, language) {
+  return new Intl.DateTimeFormat(language, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short"
+  }).format(new Date(value));
 }
 
 async function openSidebar(windowId = null) {
@@ -379,6 +464,9 @@ function normalizeConfig(config) {
   if (Object.hasOwn(config || {}, "badgeCounterEnabled")) {
     normalized.badgeCounterEnabled = config.badgeCounterEnabled !== false;
   }
+  if (Object.hasOwn(config || {}, "remindersEnabled")) {
+    normalized.remindersEnabled = config.remindersEnabled === true;
+  }
   if (Object.hasOwn(config || {}, "languagePreference")) {
     normalized.languagePreference = normalizeLanguagePreference(config.languagePreference);
   }
@@ -469,21 +557,23 @@ async function handleMessage(message) {
 ext.runtime.onInstalled.addListener(() => {
   ensureAlarm()
     .then(() => ensureContentScriptRegistration())
-    .then(() => updateBadge())
+    .then(() => applyReminderScheduleFromStorage())
     .catch(() => {});
 });
 
 ext.runtime.onStartup.addListener(() => {
   ensureAlarm()
     .then(() => ensureContentScriptRegistration())
-    .then(() => updateBadge())
+    .then(() => applyReminderScheduleFromStorage())
     .catch(() => {});
 });
 
 ext.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === REFRESH_ALARM) {
     refreshFromSteam().catch(() => {});
+    return;
   }
+  handleReminderAlarm(alarm.name).catch(() => {});
 });
 
 ext.storage.onChanged.addListener(() => {
@@ -521,6 +611,12 @@ ext.commands?.onCommand?.addListener((command, tab) => {
   if (command === "open-sidebar") {
     openSidebar(tab?.windowId).catch(() => {});
   }
+});
+
+ext.notifications?.onClicked?.addListener(() => {
+  openSidebar()
+    .catch(() => ext.tabs.create({ url: ext.runtime.getURL("popup.html") }))
+    .catch(() => {});
 });
 
 ext.runtime.onMessage.addListener((message, sender, sendResponse) => {

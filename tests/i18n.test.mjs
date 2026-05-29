@@ -41,16 +41,17 @@ describe("i18n", () => {
     const files = [
       "extension/popup.html",
       "extension/sidebar.html",
-      "extension/popup.js"
+      "extension/popup.js",
+      "extension/background.js"
     ];
 
     const keys = new Set();
     for (const file of files) {
       const content = fs.readFileSync(file, "utf8");
-      for (const match of content.matchAll(/data-i18n(?:-aria-label)?="([^"]+)"/g)) {
+      for (const match of content.matchAll(/data-i18n(?:-aria-label|-title)?="([^"]+)"/g)) {
         keys.add(match[1]);
       }
-      for (const match of content.matchAll(/\bt\("([^"]+)"/g)) {
+      for (const match of content.matchAll(/(?:\bt|translator\.t)\("([^"]+)"/g)) {
         keys.add(match[1]);
       }
     }

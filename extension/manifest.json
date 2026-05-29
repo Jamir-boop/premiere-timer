@@ -20,6 +20,9 @@
     "sidePanel",
     "storage"
   ],
+  "optional_permissions": [
+    "notifications"
+  ],
   "host_permissions": [
     "https://steamcommunity.com/*"
   ],
@@ -47,5 +50,15 @@
   "background": {
     "service_worker": "background.js",
     "type": "module"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "premiere-reminder@superuser.example.com",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
   }
 }

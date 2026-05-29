@@ -12,6 +12,7 @@ export const DEFAULT_THEME = {
 };
 export const DEFAULT_CONFIG = {
   badgeCounterEnabled: true,
+  remindersEnabled: false,
   languagePreference: LANGUAGE_AUTO
 };
 
@@ -30,6 +31,8 @@ export const DEFAULT_STATE = {
   activeDays: null,
   expirationAtEstimate: null,
   playBeforeAt: null,
+  safeReminderSentFor: null,
+  expiryReminderSentFor: null,
   ...DEFAULT_CONFIG,
   ...DEFAULT_THEME
 };

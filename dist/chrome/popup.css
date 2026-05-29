@@ -264,8 +264,7 @@ input[type="color"] {
   align-items: center;
 }
 
-.wide-field,
-.about-section {
+.wide-field {
   grid-column: 1 / -1;
   display: grid;
   gap: 8px;
@@ -274,6 +273,10 @@ input[type="color"] {
 .settings-fields label {
   color: var(--text-muted);
   font-size: 12px;
+}
+
+.settings-fields .switch-row {
+  color: var(--text);
 }
 
 .settings-fields input[type="color"] {
@@ -295,16 +298,102 @@ input[type="color"] {
   accent-color: var(--accent);
 }
 
+.switch-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 9px;
+  align-items: center;
+  min-height: 34px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.switch-row input[type="checkbox"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.switch-control {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface-3);
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.switch-control::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--text-muted);
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.switch-row input[type="checkbox"]:checked + .switch-control {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.switch-row input[type="checkbox"]:checked + .switch-control::after {
+  background: var(--text-on-accent);
+  transform: translateX(16px);
+}
+
+.switch-row input[type="checkbox"]:focus-visible + .switch-control {
+  outline: 2px solid var(--accent-outline);
+  outline-offset: 2px;
+}
+
 .settings-fields button {
   grid-column: 1 / -1;
 }
 
 .about-section {
-  padding-top: 3px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  padding-top: 2px;
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
-.about-section button {
-  width: 100%;
+.about-section h3,
+.about-section span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.about-section h3 {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.about-section .icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  min-height: 28px;
+  padding: 0;
+}
+
+.about-section .icon-button svg {
+  width: 15px;
+  height: 15px;
 }
 
 .help-actions {

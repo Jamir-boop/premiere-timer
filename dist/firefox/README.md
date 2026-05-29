@@ -36,7 +36,7 @@ Firefox:
 4. If Steam access is missing, click `Allow Steam access`.
 5. If Steam rating parse fails, use `Manual rating fallback`.
 6. If Steam login is needed, use the main action to open GCPD pages, log in, and leave tabs open until sync finishes.
-7. Optional: open `Settings` to change the dark theme accent color, open the sidebar, or configure shortcuts.
+7. Optional: open `Settings` to enable 1-day browser notifications, change language, change the dark theme accent color, open the sidebar, or configure shortcuts.
 
 Timer uses latest Premier match from Steam Personal Game Data plus the `Premier` row `Skill Group` value from the matchmaking GCPD page. `Play before` subtracts 25h safety margin. Explicit Steam `GMT`/`UTC`/offset dates are parsed as absolute time; unmarked dates are treated as local browser time.
 
@@ -49,4 +49,4 @@ Commands ship without default keys:
 
 Configure them in browser shortcut settings.
 
-Limit: browser must be running. No OS-level reminders in v1.
+Limit: browser must be running for reminders.

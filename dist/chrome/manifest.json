@@ -20,6 +20,9 @@
     "sidePanel",
     "storage"
   ],
+  "optional_permissions": [
+    "notifications"
+  ],
   "host_permissions": [
     "https://steamcommunity.com/*"
   ],

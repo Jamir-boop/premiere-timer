@@ -20,6 +20,7 @@ describe("manifest", () => {
       "128": "icons/icon-128.png"
     });
     assert.deepEqual(manifest.permissions.sort(), ["activeTab", "alarms", "scripting", "sidePanel", "storage"]);
+    assert.deepEqual(manifest.optional_permissions, ["notifications"]);
     assert.deepEqual(manifest.host_permissions, ["https://steamcommunity.com/*"]);
     assert.equal(manifest.optional_host_permissions, undefined);
     assert.equal(manifest.action.default_popup, "popup.html");
@@ -55,6 +56,7 @@ describe("manifest", () => {
       "128": "icons/icon-128.png"
     });
     assert.deepEqual(manifest.permissions.sort(), ["activeTab", "alarms", "scripting", "storage"]);
+    assert.deepEqual(manifest.optional_permissions, ["notifications"]);
     assert.deepEqual(manifest.host_permissions, ["https://steamcommunity.com/*"]);
     assert.equal(manifest.permissions.includes("sidePanel"), false);
     assert.equal(manifest.action.default_popup, "popup.html");
@@ -78,6 +80,14 @@ describe("manifest", () => {
     assert.equal(manifest.background.service_worker, undefined);
     assert.equal(manifest.commands._execute_action.suggested_key, undefined);
     assert.equal(manifest.commands["open-sidebar"].suggested_key, undefined);
+    assert.deepEqual(manifest.browser_specific_settings, {
+      gecko: {
+        id: "premiere-reminder@superuser.example.com",
+        data_collection_permissions: {
+          required: ["none"]
+        }
+      }
+    });
   });
 
   it("builds Chrome and Firefox extension outputs", () => {
@@ -92,6 +102,7 @@ describe("manifest", () => {
     assert.deepEqual(firefoxManifest.background.scripts, ["background.js"]);
     assert.equal(firefoxManifest.background.service_worker, undefined);
     assert.equal(firefoxManifest.sidebar_action.default_panel, "sidebar.html");
+    assert.deepEqual(firefoxManifest.browser_specific_settings.gecko.data_collection_permissions.required, ["none"]);
     assert.equal(fs.existsSync("dist/chrome/popup.html"), true);
     assert.equal(fs.existsSync("dist/chrome/sidebar.html"), true);
     assert.equal(fs.existsSync("dist/chrome/icons/icon-128.png"), true);

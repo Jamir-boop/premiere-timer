@@ -1,5 +1,12 @@
 import { formatDuration, getTimerState } from "./lib/calc.js";
-import { ext, hasPermission, requestPermission, sendMessage } from "./lib/ext-api.js";
+import {
+  ext,
+  hasApiPermission,
+  hasPermission,
+  requestApiPermission,
+  requestPermission,
+  sendMessage
+} from "./lib/ext-api.js";
 import {
   createTranslator,
   getBrowserLanguageCandidates,
@@ -40,6 +47,7 @@ const elements = {
   ratingInput: document.querySelector("#ratingInput"),
   manualForm: document.querySelector("#manualForm"),
   manualLatest: document.querySelector("#manualLatest"),
+  remindersEnabled: document.querySelector("#remindersEnabled"),
   languagePreference: document.querySelector("#languagePreference"),
   themeAccentColor: document.querySelector("#themeAccentColor"),
   badgeCounterEnabled: document.querySelector("#badgeCounterEnabled"),
@@ -59,6 +67,7 @@ let manualFallbackWasNeeded = false;
 let translator = createTranslator();
 
 const APP_VERSION = ext.runtime?.getManifest?.().version || "1.0.0";
+const NOTIFICATIONS_PERMISSION = "notifications";
 
 async function init() {
   bindEvents();
@@ -147,6 +156,7 @@ function bindEvents() {
   });
 
   elements.themeAccentColor.addEventListener("change", saveThemeFromInputs);
+  elements.remindersEnabled.addEventListener("change", saveConfigFromInputs);
   elements.languagePreference.addEventListener("change", saveConfigFromInputs);
   elements.badgeCounterEnabled.addEventListener("change", saveConfigFromInputs);
 
@@ -234,10 +244,11 @@ function render() {
   elements.fetchStatusValue.textContent = formatStatus(state.lastFetchStatus);
   elements.fetchErrorValue.textContent = state.lastFetchError || "--";
   elements.ratingInput.value = state.currentRating ?? "";
+  elements.remindersEnabled.checked = state.remindersEnabled === true;
   elements.languagePreference.value = normalizeLanguagePreference(state.languagePreference);
   elements.themeAccentColor.value = normalizeStoredHex(state.themeAccentColor, DEFAULT_THEME.themeAccentColor);
   elements.badgeCounterEnabled.checked = state.badgeCounterEnabled !== false;
-  elements.versionValue.textContent = APP_VERSION;
+  elements.versionValue.textContent = `v${APP_VERSION}`;
   renderPanels();
 }
 
@@ -269,6 +280,9 @@ function applyStaticTranslations() {
   }
   for (const element of document.querySelectorAll("[data-i18n-aria-label]")) {
     element.setAttribute("aria-label", t(element.dataset.i18nAriaLabel));
+  }
+  for (const element of document.querySelectorAll("[data-i18n-title]")) {
+    element.setAttribute("title", t(element.dataset.i18nTitle));
   }
 }
 
@@ -309,15 +323,38 @@ async function saveThemeFromInputs() {
   });
 }
 
-async function saveConfigFromInputs() {
+async function saveConfigFromInputs(event) {
   await runAction(t("savingConfig"), async () => {
+    const remindersResult = await getRequestedRemindersEnabled(event?.target === elements.remindersEnabled);
     state = await sendMessage("saveConfig", {
+      remindersEnabled: remindersResult.enabled,
       badgeCounterEnabled: elements.badgeCounterEnabled.checked,
       languagePreference: elements.languagePreference.value
     });
     render();
-    setMessage(t("configSaved"));
+    setMessage(remindersResult.denied ? t("remindersPermissionDenied") : t("configSaved"));
   });
+}
+
+async function getRequestedRemindersEnabled(shouldRequestPermission) {
+  if (!elements.remindersEnabled.checked) {
+    return { enabled: false, denied: false };
+  }
+
+  const hasNotifications = await hasApiPermission(NOTIFICATIONS_PERMISSION).catch(() => false);
+  if (hasNotifications) {
+    return { enabled: true, denied: false };
+  }
+
+  const allowed = shouldRequestPermission
+    ? await requestApiPermission(NOTIFICATIONS_PERMISSION).catch(() => false)
+    : false;
+  if (allowed) {
+    return { enabled: true, denied: false };
+  }
+
+  elements.remindersEnabled.checked = false;
+  return { enabled: false, denied: true };
 }
 
 function applyTheme(currentState) {
