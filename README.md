@@ -2,23 +2,18 @@
   <img src="extension/icons/icon-128.png" alt="Premiere Timer Icon" width="128" height="128">
 </p>
 
-
 # Premiere Timer Extension
 
 Tracks CS2 Premier rating expiry from Steam Personal Game Data. Browser must be logged into Steam. No Steam password, no backend.
 
-## Features
-
-- Tracks Premier rating expiry from Steam
-- Shows safe play window countdown
-- Displays current CS Rating and latest Premier match
-- Manual rating fallback and time adjustment
-- Sidebar and popup interfaces
-- Browser action badge with day counter
-- Keyboard shortcuts (configurable)
-- Steam access management
-
 ## Installation
+
+### From Stores
+#### Chrome Web Store
+[![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Install-brightgreen)](https://chrome.google.com/webstore/detail/premiere-timer/placeholder)
+
+#### Firefox Add-ons
+[![Firefox Add-ons](https://img.shields.io/badge/Firefox%20Add--ons-Install-blue)](https://addons.mozilla.org/en-US/firefox/addon/premiere-timer/)
 
 ### From Source (Developer Mode)
 #### Chrome
@@ -32,12 +27,16 @@ Tracks CS2 Premier rating expiry from Steam Personal Game Data. Browser must be 
 2. Click "Load Temporary Add-on"
 3. Select the `manifest.json` file inside `dist/firefox/`
 
-### From Stores
-#### Chrome Web Store
-[![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Install-brightgreen)](https://chrome.google.com/webstore/detail/premiere-timer/placeholder)
+## Features
 
-#### Firefox Add-ons
-[![Firefox Add-ons](https://img.shields.io/badge/Firefox%20Add--ons-Install-blue)](https://addons.mozilla.org/firefox/addon/premiere-timer/placeholder)
+- Tracks Premier rating expiry from Steam
+- Shows safe play window countdown
+- Displays current CS Rating and latest Premier match
+- Manual rating fallback and time adjustment
+- Sidebar and popup interfaces
+- Browser action badge with day counter
+- Keyboard shortcuts (configurable)
+- Steam access management
 
 ## Usage
 
