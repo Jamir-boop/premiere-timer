@@ -4,16 +4,12 @@
 
 # Premiere Timer Extension
 
-Tracks CS2 Premier rating expiry from Steam Personal Game Data. Browser must be logged into Steam. No Steam password, no backend.
+Local CS2 Premier CS Rating expiry timer using Steam Personal Game Data.
+
+[![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Install-brightgreen)](https://chrome.google.com/webstore/detail/premiere-timer/placeholder)
+[![Firefox Add-ons](https://img.shields.io/badge/Firefox%20Add--ons-Install-blue)](https://addons.mozilla.org/en-US/firefox/addon/premiere-timer/)
 
 ## Installation
-
-### From Stores
-#### Chrome Web Store
-[![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Install-brightgreen)](https://chrome.google.com/webstore/detail/premiere-timer/placeholder)
-
-#### Firefox Add-ons
-[![Firefox Add-ons](https://img.shields.io/badge/Firefox%20Add--ons-Install-blue)](https://addons.mozilla.org/en-US/firefox/addon/premiere-timer/)
 
 ### From Source (Developer Mode)
 #### Chrome
@@ -26,17 +22,6 @@ Tracks CS2 Premier rating expiry from Steam Personal Game Data. Browser must be 
 1. Open `about:debugging#/runtime/this-firefox`
 2. Click "Load Temporary Add-on"
 3. Select the `manifest.json` file inside `dist/firefox/`
-
-## Features
-
-- Tracks Premier rating expiry from Steam
-- Shows safe play window countdown
-- Displays current CS Rating and latest Premier match
-- Manual rating fallback and time adjustment
-- Sidebar and popup interfaces
-- Browser action badge with day counter
-- Keyboard shortcuts (configurable)
-- Steam access management
 
 ## Usage
 
