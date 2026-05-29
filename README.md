@@ -20,16 +20,24 @@ Tracks CS2 Premier rating expiry from Steam Personal Game Data. Browser must be 
 
 ## Installation
 
-### Chrome
+### From Source (Developer Mode)
+#### Chrome
 1. Open `chrome://extensions`
 2. Enable Developer mode
 3. Click "Load unpacked"
 4. Select the `dist/chrome/` folder
 
-### Firefox
+#### Firefox
 1. Open `about:debugging#/runtime/this-firefox`
 2. Click "Load Temporary Add-on"
 3. Select the `manifest.json` file inside `dist/firefox/`
+
+### From Stores
+#### Chrome Web Store
+[![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Install-brightgreen)](https://chrome.google.com/webstore/detail/premiere-timer/placeholder)
+
+#### Firefox Add-ons
+[![Firefox Add-ons](https://img.shields.io/badge/Firefox%20Add--ons-Install-blue)](https://addons.mozilla.org/firefox/addon/premiere-timer/placeholder)
 
 ## Usage
 
