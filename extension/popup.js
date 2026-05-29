@@ -1,6 +1,12 @@
 import { formatDuration, getTimerState } from "./lib/calc.js";
 import { ext, hasPermission, requestPermission, sendMessage } from "./lib/ext-api.js";
-import { STEAM_ORIGIN } from "./lib/state.js";
+import {
+  createTranslator,
+  getBrowserLanguageCandidates,
+  normalizeLanguagePreference,
+  timerLabel
+} from "./lib/i18n.js";
+import { DEFAULT_THEME, STEAM_ORIGIN } from "./lib/state.js";
 
 const elements = {
   statusText: document.querySelector("#statusText"),
@@ -15,9 +21,9 @@ const elements = {
   latestMatch: document.querySelector("#latestMatch"),
   fetchValue: document.querySelector("#fetchValue"),
   timezoneValue: document.querySelector("#timezoneValue"),
-  allowSteam: document.querySelector("#allowSteam"),
   primaryAction: document.querySelector("#primaryAction"),
   accessStatus: document.querySelector("#accessStatus"),
+  secondaryButtons: document.querySelector(".secondary-buttons"),
   moreDataToggle: document.querySelector("#moreDataToggle"),
   manualToggle: document.querySelector("#manualToggle"),
   settingsToggle: document.querySelector("#settingsToggle"),
@@ -34,6 +40,12 @@ const elements = {
   ratingInput: document.querySelector("#ratingInput"),
   manualForm: document.querySelector("#manualForm"),
   manualLatest: document.querySelector("#manualLatest"),
+  languagePreference: document.querySelector("#languagePreference"),
+  themeAccentColor: document.querySelector("#themeAccentColor"),
+  badgeCounterEnabled: document.querySelector("#badgeCounterEnabled"),
+  resetTheme: document.querySelector("#resetTheme"),
+  versionValue: document.querySelector("#versionValue"),
+  openGitHub: document.querySelector("#openGitHub"),
   openSidebar: document.querySelector("#openSidebar"),
   openShortcuts: document.querySelector("#openShortcuts"),
   message: document.querySelector("#message")
@@ -44,6 +56,9 @@ let hasSteamAccess = false;
 let tickTimer = null;
 let activePanel = null;
 let manualFallbackWasNeeded = false;
+let translator = createTranslator();
+
+const APP_VERSION = ext.runtime?.getManifest?.().version || "1.0.0";
 
 async function init() {
   bindEvents();
@@ -52,26 +67,20 @@ async function init() {
 }
 
 function bindEvents() {
-  elements.allowSteam.addEventListener("click", async () => {
-    await runAction("Requesting Steam access", async () => {
-      const allowed = await requestPermission(STEAM_ORIGIN);
-      hasSteamAccess = allowed;
-      if (!allowed) {
-        setMessage("Steam access denied.");
-        return;
-      }
-      await reloadState();
-      setMessage("Steam access allowed. Sync Steam data next.");
-    });
-  });
-
   elements.primaryAction.addEventListener("click", async () => {
     const action = primaryActionForState(state, hasSteamAccess);
     await runAction(action.busyLabel, async () => {
+      if (action.type === "permission") {
+        const allowed = await requestPermission(STEAM_ORIGIN);
+        hasSteamAccess = allowed;
+        setMessage(allowed ? t("steamAccessAllowedNext") : t("steamAccessDenied"));
+        return;
+      }
+
       if (action.type === "open") {
         state = await sendMessage("openGcpd");
         render();
-        setMessage("Opened Steam GCPD pages. Leave them open until sync finishes.");
+        setMessage(t("openedSteamGcpdPages"));
         return;
       }
 
@@ -94,39 +103,58 @@ function bindEvents() {
   });
 
   elements.openSidebar.addEventListener("click", async () => {
-    await runAction("Opening sidebar", async () => {
+    await runAction(t("openingSidebar"), async () => {
       await openSidebarFromUserGesture();
-      setMessage("Sidebar opened.");
+      setMessage(t("sidebarOpened"));
     });
   });
 
   elements.openShortcuts.addEventListener("click", async () => {
-    await runAction("Opening shortcut settings", async () => {
+    await runAction(t("openingShortcutSettings"), async () => {
       await sendMessage("openShortcutSettings");
-      setMessage("Shortcut settings opened.");
+      setMessage(t("shortcutSettingsOpened"));
+    });
+  });
+
+  elements.openGitHub.addEventListener("click", async () => {
+    await runAction(t("openingRepository"), async () => {
+      await sendMessage("openRepository");
+      setMessage(t("repositoryOpened"));
     });
   });
 
   elements.ratingForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    await runAction("Saving rating", async () => {
+    await runAction(t("savingRating"), async () => {
       state = await sendMessage("saveRating", { rating: elements.ratingInput.value });
       render();
-      setMessage("Manual rating saved.");
+      setMessage(t("manualRatingSaved"));
     });
   });
 
   elements.manualForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    await runAction("Saving latest match", async () => {
+    await runAction(t("savingLatestMatch"), async () => {
       if (!elements.manualLatest.value) {
-        throw new Error("Pick latest Premier match time.");
+        throw new Error(t("pickLatestPremierMatchTime"));
       }
       state = await sendMessage("saveManualLatest", {
         latestPremierMatchAt: new Date(elements.manualLatest.value).toISOString()
       });
       render();
-      setMessage("Manual match time saved.");
+      setMessage(t("manualMatchTimeSaved"));
+    });
+  });
+
+  elements.themeAccentColor.addEventListener("change", saveThemeFromInputs);
+  elements.languagePreference.addEventListener("change", saveConfigFromInputs);
+  elements.badgeCounterEnabled.addEventListener("change", saveConfigFromInputs);
+
+  elements.resetTheme.addEventListener("click", async () => {
+    await runAction(t("resettingColors"), async () => {
+      state = await sendMessage("resetTheme");
+      render();
+      setMessage(t("colorsReset"));
     });
   });
 
@@ -154,16 +182,27 @@ function render() {
     return;
   }
 
+  translator = createTranslator(
+    state.languagePreference,
+    getBrowserLanguageCandidates([ext.i18n?.getUILanguage?.()])
+  );
+  applyStaticTranslations();
+  applyTheme(state);
+
   const timer = getTimerState(state);
   const expiry = timer.expiry;
   const action = primaryActionForState(state, hasSteamAccess);
   const setupComplete = isSetupComplete(state);
   const manualFallbackNeeded = needsManualFallback(state);
 
-  if (manualFallbackNeeded && !manualFallbackWasNeeded) {
+  if (!hasSteamAccess && activePanel !== "settings") {
+    activePanel = null;
+  }
+
+  if (hasSteamAccess && manualFallbackNeeded && !manualFallbackWasNeeded) {
     activePanel = "manual";
   }
-  manualFallbackWasNeeded = manualFallbackNeeded;
+  manualFallbackWasNeeded = hasSteamAccess && manualFallbackNeeded;
 
   elements.statusText.textContent = statusText(timer, state);
   elements.statusDot.className = "";
@@ -172,21 +211,22 @@ function render() {
   elements.stepAccess.classList.toggle("done", hasSteamAccess);
   elements.stepSync.classList.toggle("done", state.lastFetchStatus === "ok");
   elements.stepReady.classList.toggle("done", setupComplete);
-  elements.countdown.textContent = expiry ? formatDuration(expiry.msUntilPlayBefore) : "--";
+  elements.countdown.textContent = expiry ? formatCountdown(expiry.msUntilPlayBefore) : "--";
   elements.playBefore.textContent = state.playBeforeAt
-    ? `Play Premier before ${formatDateTime(state.playBeforeAt)}`
-    : "Steam sync needed.";
+    ? t("playBefore", { value: formatDateTime(state.playBeforeAt) })
+    : t("steamSyncNeeded");
   elements.ratingValue.textContent = formatRating(state.currentRating);
   elements.latestMatch.textContent = state.latestPremierMatchAt ? formatDateTime(state.latestPremierMatchAt) : "--";
   elements.fetchValue.textContent = state.lastFetchAt
     ? formatRelativeWithSuffix(state.lastFetchAt)
-    : "Never";
+    : t("never");
   elements.timezoneValue.textContent = timezoneLabel();
-  elements.allowSteam.hidden = hasSteamAccess;
-  elements.primaryAction.hidden = !hasSteamAccess;
   elements.primaryAction.textContent = action.label;
-  elements.primaryAction.disabled = !hasSteamAccess || action.disabled;
-  elements.accessStatus.textContent = hasSteamAccess ? "Steam access allowed" : "Steam access pending";
+  elements.primaryAction.disabled = action.disabled;
+  elements.accessStatus.textContent = hasSteamAccess ? t("steamAccessAllowed") : t("steamAccessPending");
+  elements.secondaryButtons.hidden = false;
+  elements.moreDataToggle.hidden = !hasSteamAccess;
+  elements.manualToggle.hidden = !hasSteamAccess;
   elements.ratingSourceValue.textContent = ratingSourceLabel(state);
   elements.expiryValue.textContent = state.expirationAtEstimate ? formatDateTime(state.expirationAtEstimate) : "--";
   elements.matchStatusValue.textContent = formatStatus(state.latestMatchStatus);
@@ -194,26 +234,46 @@ function render() {
   elements.fetchStatusValue.textContent = formatStatus(state.lastFetchStatus);
   elements.fetchErrorValue.textContent = state.lastFetchError || "--";
   elements.ratingInput.value = state.currentRating ?? "";
+  elements.languagePreference.value = normalizeLanguagePreference(state.languagePreference);
+  elements.themeAccentColor.value = normalizeStoredHex(state.themeAccentColor, DEFAULT_THEME.themeAccentColor);
+  elements.badgeCounterEnabled.checked = state.badgeCounterEnabled !== false;
+  elements.versionValue.textContent = APP_VERSION;
   renderPanels();
 }
 
 function primaryActionForState(currentState, permission) {
   if (!permission) {
-    return { type: "none", label: "Sync Steam data", busyLabel: "Syncing Steam data", disabled: true };
+    return { type: "permission", label: t("allowSteamAccess"), busyLabel: t("requestingSteamAccess"), disabled: false };
   }
   if (
     currentState.latestMatchStatus === "needs_login" ||
     currentState.ratingStatus === "needs_login"
   ) {
-    return { type: "open", label: "Open Steam GCPD", busyLabel: "Opening Steam GCPD" };
+    return { type: "open", label: t("openSteamGcpd"), busyLabel: t("openingSteamGcpd") };
   }
   if (!currentState.latestPremierMatchAt || currentState.currentRating === null || currentState.currentRating === undefined) {
-    return { type: "open", label: "Sync Steam data", busyLabel: "Opening Steam GCPD" };
+    return { type: "open", label: t("syncSteamData"), busyLabel: t("openingSteamGcpd") };
   }
   if (currentState.ratingNeedsUpdate || currentState.ratingStatus === "rating_not_found") {
-    return { type: "open", label: "Sync Steam rating", busyLabel: "Opening Steam GCPD" };
+    return { type: "open", label: t("syncSteamRating"), busyLabel: t("openingSteamGcpd") };
   }
-  return { type: "refresh", label: "Refresh", busyLabel: "Refreshing Steam" };
+  return { type: "refresh", label: t("refresh"), busyLabel: t("refreshingSteam") };
+}
+
+function applyStaticTranslations() {
+  document.documentElement.lang = translator.language;
+  document.title = t("appName");
+
+  for (const element of document.querySelectorAll("[data-i18n]")) {
+    element.textContent = t(element.dataset.i18n);
+  }
+  for (const element of document.querySelectorAll("[data-i18n-aria-label]")) {
+    element.setAttribute("aria-label", t(element.dataset.i18nAriaLabel));
+  }
+}
+
+function t(key, values = {}) {
+  return translator.t(key, values);
 }
 
 function setActivePanel(panelName) {
@@ -237,6 +297,85 @@ function renderPanels() {
     panel.hidden = activePanel !== panelName;
     buttons[panelName].setAttribute("aria-pressed", String(activePanel === panelName));
   }
+}
+
+async function saveThemeFromInputs() {
+  await runAction(t("savingColors"), async () => {
+    state = await sendMessage("saveTheme", {
+      themeAccentColor: elements.themeAccentColor.value
+    });
+    render();
+    setMessage(t("colorsSaved"));
+  });
+}
+
+async function saveConfigFromInputs() {
+  await runAction(t("savingConfig"), async () => {
+    state = await sendMessage("saveConfig", {
+      badgeCounterEnabled: elements.badgeCounterEnabled.checked,
+      languagePreference: elements.languagePreference.value
+    });
+    render();
+    setMessage(t("configSaved"));
+  });
+}
+
+function applyTheme(currentState) {
+  const backgroundColor = "#000000";
+  const accentColor = normalizeStoredHex(currentState.themeAccentColor, DEFAULT_THEME.themeAccentColor);
+  const root = document.documentElement;
+  const border = blendHex(backgroundColor, accentColor, 0.22);
+  const borderStrong = blendHex(backgroundColor, accentColor, 0.44);
+
+  root.style.setProperty("--bg", backgroundColor);
+  root.style.setProperty("--surface-0", backgroundColor);
+  root.style.setProperty("--surface-1", blendHex(backgroundColor, "#FFFFFF", 0.02));
+  root.style.setProperty("--surface-2", blendHex(backgroundColor, "#FFFFFF", 0.04));
+  root.style.setProperty("--surface-3", blendHex(backgroundColor, "#FFFFFF", 0.07));
+  root.style.setProperty("--accent", accentColor);
+  root.style.setProperty("--accent-hover", accentColor);
+  root.style.setProperty("--accent-active", accentColor);
+  root.style.setProperty("--accent-outline", accentColor);
+  root.style.setProperty("--border", border);
+  root.style.setProperty("--border-strong", borderStrong);
+  root.style.setProperty("--text-on-accent", relativeLuminance(accentColor) > 0.45 ? "#000000" : "#FFFFFF");
+}
+
+function normalizeStoredHex(value, fallback) {
+  return typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value)
+    ? value.toUpperCase()
+    : fallback;
+}
+
+function blendHex(baseColor, overlayColor, overlayAmount) {
+  const base = hexToRgb(baseColor);
+  const overlay = hexToRgb(overlayColor);
+  return rgbToHex({
+    r: Math.round(base.r * (1 - overlayAmount) + overlay.r * overlayAmount),
+    g: Math.round(base.g * (1 - overlayAmount) + overlay.g * overlayAmount),
+    b: Math.round(base.b * (1 - overlayAmount) + overlay.b * overlayAmount)
+  });
+}
+
+function relativeLuminance(hexColor) {
+  const { r, g, b } = hexToRgb(hexColor);
+  const [red, green, blue] = [r, g, b].map((channel) => {
+    const value = channel / 255;
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+}
+
+function hexToRgb(hexColor) {
+  return {
+    r: Number.parseInt(hexColor.slice(1, 3), 16),
+    g: Number.parseInt(hexColor.slice(3, 5), 16),
+    b: Number.parseInt(hexColor.slice(5, 7), 16)
+  };
+}
+
+function rgbToHex({ r, g, b }) {
+  return `#${[r, g, b].map((channel) => channel.toString(16).padStart(2, "0")).join("").toUpperCase()}`;
 }
 
 function isSetupComplete(currentState) {
@@ -268,18 +407,18 @@ function needsManualFallback(currentState) {
 
 function statusText(timer, currentState) {
   if (currentState.latestMatchStatus === "needs_login" || currentState.ratingStatus === "needs_login") {
-    return "Login required";
+    return t("loginRequired");
   }
   if (currentState.latestMatchStatus === "no_premier_matches") {
-    return "No Premier match found";
+    return t("noPremierMatchFound");
   }
   if (timer.level === "unknown") {
-    return "Missing data";
+    return t("missingData");
   }
   if (timer.level === "stale_rating") {
-    return "Update rating";
+    return t("updateRating");
   }
-  return timer.label;
+  return timerLabel(timer.level, translator);
 }
 
 function statusClass(level) {
@@ -296,35 +435,35 @@ function statusClass(level) {
 }
 
 function formatRating(value) {
-  return value === null || value === undefined ? "--" : Number(value).toLocaleString();
+  return value === null || value === undefined ? "--" : Number(value).toLocaleString(translator.language);
 }
 
 function ratingSourceLabel(currentState) {
   if (currentState.ratingSource === "steam_matchmaking") {
-    return "Steam matchmaking";
+    return t("steamMatchmaking");
   }
   if (currentState.ratingSource === "manual") {
-    return "Manual";
+    return t("manual");
   }
-  return "Missing";
+  return t("missing");
 }
 
 function formatStatus(status) {
   const labels = {
-    empty: "Empty",
-    error: "Error",
-    needs_login: "Needs login",
-    never: "Never",
-    no_permission: "No permission",
-    no_premier_matches: "No Premier matches",
-    ok: "OK",
-    rating_not_found: "Rating not found"
+    empty: "statusEmpty",
+    error: "statusError",
+    needs_login: "statusNeedsLogin",
+    never: "statusNever",
+    no_permission: "statusNoPermission",
+    no_premier_matches: "statusNoPremierMatches",
+    ok: "statusOk",
+    rating_not_found: "statusRatingNotFound"
   };
-  return labels[status] || status || "Never";
+  return labels[status] ? t(labels[status]) : status || t("never");
 }
 
 function formatDateTime(value) {
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(translator.language, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -335,7 +474,7 @@ function formatDateTime(value) {
 }
 
 function timezoneLabel() {
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Local";
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || t("local");
   return `${timezone} (${timezoneOffsetLabel(new Date())})`;
 }
 
@@ -348,39 +487,50 @@ function timezoneOffsetLabel(date) {
   return `UTC${sign}${hours}:${minutes}`;
 }
 
+function formatCountdown(ms) {
+  const value = formatDuration(ms);
+  if (value === "unknown") {
+    return t("missing");
+  }
+  if (value === "expired") {
+    return t("expired");
+  }
+  return value;
+}
+
 function formatRelative(value) {
   const diffMs = Date.now() - new Date(value).getTime();
   if (!Number.isFinite(diffMs) || diffMs < 0) {
-    return "now";
+    return t("now");
   }
-  return formatDuration(diffMs);
+  return formatCountdown(diffMs);
 }
 
 function formatRelativeWithSuffix(value) {
   const relative = formatRelative(value);
-  return relative === "now" ? "now" : `${relative} ago`;
+  return relative === t("now") ? t("now") : t("ago", { value: relative });
 }
 
 function fetchStatusMessage(currentState) {
   if (currentState.latestMatchStatus === "ok" && currentState.ratingStatus === "ok") {
-    return "Steam data refreshed.";
+    return t("steamDataRefreshed");
   }
   if (currentState.latestMatchStatus === "needs_login" || currentState.ratingStatus === "needs_login") {
-    return "Steam login required. Open GCPD while logged in.";
+    return t("steamLoginRequired");
   }
   if (currentState.lastFetchStatus === "no_permission") {
-    return "Steam access not allowed.";
+    return t("steamAccessNotAllowed");
   }
   if (currentState.ratingStatus === "rating_not_found") {
-    return "Steam rating not found. Use manual fallback.";
+    return t("ratingNotFoundManual");
   }
   if (currentState.latestMatchStatus === "no_premier_matches") {
-    return "No Premier match found.";
+    return t("noPremierMatchFound");
   }
   if (currentState.lastFetchError) {
     return currentState.lastFetchError;
   }
-  return `Steam status: ${formatStatus(currentState.lastFetchStatus)}`;
+  return t("steamStatus", { status: formatStatus(currentState.lastFetchStatus) });
 }
 
 async function openSidebarFromUserGesture() {
@@ -403,7 +553,7 @@ async function runAction(label, fn) {
   try {
     await fn();
   } catch (error) {
-    setMessage(error.message);
+    setMessage(localizeErrorMessage(error.message));
   } finally {
     setBusy(false);
     await reloadState();
@@ -418,6 +568,18 @@ function setBusy(isBusy) {
 
 function setMessage(value) {
   elements.message.textContent = value;
+}
+
+function localizeErrorMessage(message) {
+  const keys = {
+    "Accent color must be a hex color.": "accentColorInvalid",
+    "CS Rating must be a number from 0 to 99999.": "csRatingInvalid",
+    "Latest Premier match time is invalid.": "latestPremierMatchInvalid",
+    "Open supported Steam GCPD page first.": "openSupportedSteamGcpd",
+    "Sidebar is not available in this browser.": "sidebarUnavailable",
+    "Unknown request.": "requestUnknown"
+  };
+  return keys[message] ? t(keys[message]) : message;
 }
 
 init().catch((error) => {

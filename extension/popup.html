@@ -3,127 +3,150 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Premiere Timer</title>
+    <title data-i18n="appName">premiere-timer</title>
     <link rel="stylesheet" href="popup.css">
   </head>
   <body>
     <main>
       <header class="topbar">
         <div>
-          <h1>CS2 Premier</h1>
-          <p id="statusText">Loading</p>
+          <h1 data-i18n="appName">premiere-timer</h1>
+          <p id="statusText" data-i18n="loading">Loading</p>
         </div>
         <div id="statusDot" aria-hidden="true"></div>
       </header>
 
       <section id="onboarding" class="onboarding" hidden>
-        <h2>Setup</h2>
-        <p>Tracks Premier rating expiry from Steam Personal Game Data. Browser must be logged into Steam. No Steam password, no backend.</p>
+        <h2 data-i18n="setupTitle">Setup</h2>
+        <p data-i18n="setupDescription">Tracks Premier rating expiry from Steam Personal Game Data. Browser must be logged into Steam. No Steam password, no backend.</p>
         <ol>
-          <li id="stepAccess">Allow Steam access</li>
-          <li id="stepSync">Sync Steam data</li>
-          <li id="stepReady">Timer ready</li>
+          <li id="stepAccess" data-i18n="stepAccess">Allow Steam access</li>
+          <li id="stepSync" data-i18n="stepSync">Sync Steam data</li>
+          <li id="stepReady" data-i18n="stepReady">Timer ready</li>
         </ol>
       </section>
 
       <section class="timer" aria-live="polite">
-        <span class="label">Safe play window</span>
+        <span class="label" data-i18n="safePlayWindow">Safe play window</span>
         <strong id="countdown">--</strong>
-        <span id="playBefore">Missing data</span>
+        <span id="playBefore" data-i18n="missingData">Missing data</span>
       </section>
 
-      <section class="facts" aria-label="Current status">
+      <section class="facts" aria-label="Current status" data-i18n-aria-label="currentStatus">
         <div>
-          <span>CS Rating</span>
+          <span data-i18n="csRating">CS Rating</span>
           <strong id="ratingValue">--</strong>
         </div>
         <div>
-          <span>Latest Premier</span>
+          <span data-i18n="latestPremier">Latest Premier</span>
           <strong id="latestMatch">--</strong>
         </div>
         <div>
-          <span>Last sync</span>
+          <span data-i18n="lastSync">Last sync</span>
           <strong id="fetchValue">--</strong>
         </div>
       </section>
 
       <section class="actions">
-        <button id="allowSteam" class="primary" type="button">Allow Steam access</button>
-        <button id="primaryAction" class="primary" type="button">Sync Steam data</button>
-        <p id="accessStatus">Steam access pending</p>
+        <button id="primaryAction" class="primary" type="button" data-i18n="syncSteamData">Sync Steam data</button>
+        <p id="accessStatus" data-i18n="steamAccessPending">Steam access pending</p>
       </section>
 
       <section class="secondary">
-        <div class="secondary-buttons" role="group" aria-label="Optional panels">
-          <button id="moreDataToggle" class="secondary-button" type="button" aria-pressed="false">More data</button>
-          <button id="manualToggle" class="secondary-button" type="button" aria-pressed="false">Manual</button>
-          <button id="settingsToggle" class="secondary-button" type="button" aria-pressed="false">Settings</button>
+        <div class="secondary-buttons" role="group" aria-label="Optional panels" data-i18n-aria-label="optionalPanels">
+          <button id="moreDataToggle" class="secondary-button" type="button" aria-pressed="false" data-i18n="moreData">More data</button>
+          <button id="manualToggle" class="secondary-button" type="button" aria-pressed="false" data-i18n="manual">Manual</button>
+          <button id="settingsToggle" class="secondary-button" type="button" aria-pressed="false" data-i18n="settings">Settings</button>
         </div>
 
         <div id="moreDataPanel" class="panel" hidden>
-          <h2>More data</h2>
+          <h2 data-i18n="moreData">More data</h2>
           <dl>
             <div>
-              <dt>Timezone</dt>
+              <dt data-i18n="timezone">Timezone</dt>
               <dd id="timezoneValue">--</dd>
             </div>
             <div>
-              <dt>Rating source</dt>
+              <dt data-i18n="ratingSource">Rating source</dt>
               <dd id="ratingSourceValue">--</dd>
             </div>
             <div>
-              <dt>Estimated expiry</dt>
+              <dt data-i18n="estimatedExpiry">Estimated expiry</dt>
               <dd id="expiryValue">--</dd>
             </div>
             <div>
-              <dt>Latest match status</dt>
+              <dt data-i18n="latestMatchStatus">Latest match status</dt>
               <dd id="matchStatusValue">--</dd>
             </div>
             <div>
-              <dt>Rating status</dt>
+              <dt data-i18n="ratingStatus">Rating status</dt>
               <dd id="ratingStatusValue">--</dd>
             </div>
             <div>
-              <dt>Fetch status</dt>
+              <dt data-i18n="fetchStatus">Fetch status</dt>
               <dd id="fetchStatusValue">--</dd>
             </div>
             <div>
-              <dt>Fetch error</dt>
+              <dt data-i18n="fetchError">Fetch error</dt>
               <dd id="fetchErrorValue">--</dd>
             </div>
           </dl>
         </div>
 
         <div id="manualPanel" class="panel" hidden>
-          <h2>Manual</h2>
+          <h2 data-i18n="manual">Manual</h2>
           <form id="ratingForm" class="stack">
-            <label for="ratingInput">Current CS Rating</label>
+            <label for="ratingInput" data-i18n="currentCSRating">Current CS Rating</label>
             <div class="row">
               <input id="ratingInput" name="rating" type="number" min="0" max="99999" step="1" inputmode="numeric" placeholder="14250">
-              <button type="submit">Save</button>
+              <button type="submit" data-i18n="save">Save</button>
             </div>
           </form>
 
           <form id="manualForm" class="stack">
-            <label for="manualLatest">Latest Premier match local time</label>
+            <label for="manualLatest" data-i18n="latestPremierMatchLocalTime">Latest Premier match local time</label>
             <input id="manualLatest" type="datetime-local">
-            <button type="submit">Use manual time</button>
+            <button type="submit" data-i18n="useManualTime">Use manual time</button>
           </form>
         </div>
 
         <div id="settingsPanel" class="panel" hidden>
-          <h2>Settings</h2>
-          <p class="panel-note">Color settings coming later.</p>
-          <div class="settings-fields" aria-disabled="true">
-            <label for="popupColorPlaceholder">Popup color</label>
-            <input id="popupColorPlaceholder" type="text" value="Default" disabled>
-            <label for="sidebarColorPlaceholder">Sidebar color</label>
-            <input id="sidebarColorPlaceholder" type="text" value="Default" disabled>
+          <h2 data-i18n="settings">Settings</h2>
+          <div class="settings-fields">
+            <div class="wide-field">
+              <label for="languagePreference" data-i18n="language">Language</label>
+              <select id="languagePreference">
+                <option value="auto" data-i18n="languageAuto">Auto</option>
+                <option value="en" data-i18n="languageEnglish">English</option>
+                <option value="es" data-i18n="languageSpanish">Español</option>
+              </select>
+            </div>
+            <label for="themeAccentColor" data-i18n="accentColor">Accent color</label>
+            <input id="themeAccentColor" type="color" value="#FFB900">
+            <label class="checkbox-row" for="badgeCounterEnabled">
+              <input id="badgeCounterEnabled" type="checkbox" checked>
+              <span data-i18n="badgeCounter">Icon day counter</span>
+            </label>
+            <button id="resetTheme" type="button" data-i18n="resetAccentColor">Reset accent color</button>
           </div>
-          <p class="panel-note">Use the main button to sync Steam data. If Steam asks you to sign in, leave the opened GCPD tabs open until sync finishes.</p>
+          <p class="panel-note" data-i18n="settingsNote">Use the main button to sync Steam data. If Steam asks you to sign in, leave the opened GCPD tabs open until sync finishes.</p>
+          <div class="about-section">
+            <h3 data-i18n="about">About</h3>
+            <dl>
+              <div>
+                <dt data-i18n="author">Author</dt>
+                <dd>jamir-boop</dd>
+              </div>
+              <div>
+                <dt data-i18n="version">Version</dt>
+                <dd id="versionValue">--</dd>
+              </div>
+            </dl>
+            <button id="openGitHub" type="button" data-i18n="githubButton">GitHub</button>
+          </div>
           <div class="help-actions">
-            <button id="openSidebar" type="button">Open sidebar</button>
-            <button id="openShortcuts" type="button">Configure shortcuts</button>
+            <button id="openSidebar" type="button" data-i18n="openSidebar">Open sidebar</button>
+            <button id="openShortcuts" type="button" data-i18n="configureShortcuts">Configure shortcuts</button>
           </div>
         </div>
       </section>

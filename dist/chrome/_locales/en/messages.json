@@ -1,0 +1,20 @@
+{
+  "extName": {
+    "message": "premiere-timer"
+  },
+  "extDescription": {
+    "message": "Local CS2 Premier CS Rating expiry timer using Steam Personal Game Data."
+  },
+  "actionDefaultTitle": {
+    "message": "premiere-timer"
+  },
+  "commandOpenPopup": {
+    "message": "Open popup"
+  },
+  "commandOpenSidebar": {
+    "message": "Open sidebar"
+  },
+  "toastUpdated": {
+    "message": "premiere-timer updated"
+  }
+}

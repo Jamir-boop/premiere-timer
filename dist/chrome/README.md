@@ -1,4 +1,4 @@
-# Premiere Timer Extension
+# premiere-timer Extension
 
 Unpacked Chrome/Firefox extension. Local only. No backend. No Steam password.
 
@@ -30,12 +30,13 @@ Firefox:
 
 ## Use
 
-1. Open extension popup from toolbar.
-2. Click `Allow Steam access`.
+1. Accept Steam access when installing the extension.
+2. Open extension popup from toolbar.
 3. Click `Sync Steam data`.
-4. If Steam rating parse fails, use `Manual rating fallback`.
-5. If Steam login is needed, use the main action to open GCPD pages, log in, and leave tabs open until sync finishes.
-6. Optional: open `Settings` to open the sidebar or configure shortcuts.
+4. If Steam access is missing, click `Allow Steam access`.
+5. If Steam rating parse fails, use `Manual rating fallback`.
+6. If Steam login is needed, use the main action to open GCPD pages, log in, and leave tabs open until sync finishes.
+7. Optional: open `Settings` to change the dark theme accent color, open the sidebar, or configure shortcuts.
 
 Timer uses latest Premier match from Steam Personal Game Data plus the `Premier` row `Skill Group` value from the matchmaking GCPD page. `Play before` subtracts 25h safety margin. Explicit Steam `GMT`/`UTC`/offset dates are parsed as absolute time; unmarked dates are treated as local browser time.
 

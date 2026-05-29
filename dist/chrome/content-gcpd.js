@@ -64,17 +64,17 @@
 
     const toast = document.createElement("div");
     toast.id = "cs2-premier-expiry-toast";
-    toast.textContent = "Premiere Timer updated";
+    toast.textContent = ext.i18n?.getMessage?.("toastUpdated") || "premiere-timer updated";
     Object.assign(toast.style, {
       position: "fixed",
       right: "16px",
       bottom: "16px",
       zIndex: "2147483647",
       padding: "10px 12px",
-      border: "1px solid rgba(255,255,255,0.18)",
+      border: "1px solid #664A00",
       borderRadius: "8px",
-      background: "#111827",
-      color: "#f9fafb",
+      background: "#000000",
+      color: "#FFFFFF",
       boxShadow: "0 10px 24px rgba(0,0,0,0.35)",
       font: "13px/1.3 system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
     });

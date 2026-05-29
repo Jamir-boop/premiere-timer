@@ -1,11 +1,14 @@
-import { getBadgeInfo, normalizeRating } from "./lib/calc.js";
+import { getBadgeInfo, getTimerState, normalizeRating } from "./lib/calc.js";
 import { ext, getStorage, hasPermission, setStorage } from "./lib/ext-api.js";
+import { badgeTitle, createTranslator, getBrowserLanguageCandidates, normalizeLanguagePreference } from "./lib/i18n.js";
 import { parseSteamGcpdMatchHistory, parseSteamGcpdMatchmakingRating } from "./lib/parser.js";
 import {
   applyLatestMatch,
   applyPatch,
   applyRating,
   DEFAULT_STATE,
+  DEFAULT_THEME,
+  DEFAULT_CONFIG,
   GCPD_MATCH_URL,
   GCPD_MATCHMAKING_URL,
   REFRESH_ALARM,
@@ -14,6 +17,7 @@ import {
 } from "./lib/state.js";
 
 const CONTENT_SCRIPT_ID = "steam-gcpd-auto-update";
+const REPOSITORY_URL = "https://github.com/Jamir-boop/premiere-timer";
 const guidedTabs = new Map();
 
 async function loadState() {
@@ -29,9 +33,22 @@ async function saveState(state) {
 async function updateBadge(state = null) {
   const current = state || await loadState();
   const badge = getBadgeInfo(current);
-  await ext.action.setBadgeText({ text: badge.text });
+  const timer = getTimerState(current);
+  const translator = createBackgroundTranslator(current);
+  await ext.action.setBadgeText({ text: current.badgeCounterEnabled === false ? "" : badge.text });
   await ext.action.setBadgeBackgroundColor({ color: badge.color });
-  await ext.action.setTitle({ title: `Premiere Timer: ${badge.title}` });
+  await ext.action.setTitle({
+    title: translator.t("actionTitleWithStatus", {
+      status: badgeTitle(timer.level, translator)
+    })
+  });
+}
+
+function createBackgroundTranslator(state) {
+  return createTranslator(
+    state?.languagePreference,
+    getBrowserLanguageCandidates([ext.i18n?.getUILanguage?.()])
+  );
 }
 
 async function openSidebar(windowId = null) {
@@ -317,6 +334,64 @@ async function saveManualLatest(value) {
   return saveState(applyLatestMatch(state, date.toISOString(), "manual"));
 }
 
+async function saveTheme(theme) {
+  const state = await loadState();
+  return saveState({
+    ...state,
+    ...normalizeTheme(theme)
+  });
+}
+
+async function resetTheme() {
+  const state = await loadState();
+  return saveState({
+    ...state,
+    ...DEFAULT_THEME
+  });
+}
+
+async function saveConfig(config) {
+  const state = await loadState();
+  return saveState({
+    ...state,
+    ...normalizeConfig(config)
+  });
+}
+
+async function resetConfig() {
+  const state = await loadState();
+  return saveState({
+    ...state,
+    ...DEFAULT_CONFIG
+  });
+}
+
+function normalizeTheme(theme) {
+  const accentColor = normalizeHexColor(theme?.themeAccentColor, "Accent color");
+
+  return {
+    themeAccentColor: accentColor
+  };
+}
+
+function normalizeConfig(config) {
+  const normalized = {};
+  if (Object.hasOwn(config || {}, "badgeCounterEnabled")) {
+    normalized.badgeCounterEnabled = config.badgeCounterEnabled !== false;
+  }
+  if (Object.hasOwn(config || {}, "languagePreference")) {
+    normalized.languagePreference = normalizeLanguagePreference(config.languagePreference);
+  }
+  return normalized;
+}
+
+function normalizeHexColor(value, label) {
+  if (typeof value !== "string" || !/^#[0-9a-fA-F]{6}$/.test(value)) {
+    throw new Error(`${label} must be a hex color.`);
+  }
+  return value.toUpperCase();
+}
+
 async function openGcpdTabs() {
   await ensureContentScriptRegistration();
   const matchTab = await ext.tabs.create({ url: GCPD_MATCH_URL });
@@ -329,6 +404,11 @@ async function openGcpdTabs() {
     guidedTabs.set(ratingTab.id, { pageType: "matchmaking", parsing: false });
   }
 
+  return loadState();
+}
+
+async function openRepository() {
+  await ext.tabs.create({ url: REPOSITORY_URL });
   return loadState();
 }
 
@@ -365,10 +445,20 @@ async function handleMessage(message) {
       return saveRating(message.rating);
     case "saveManualLatest":
       return saveManualLatest(message.latestPremierMatchAt);
+    case "saveTheme":
+      return saveTheme(message);
+    case "resetTheme":
+      return resetTheme();
+    case "saveConfig":
+      return saveConfig(message);
+    case "resetConfig":
+      return resetConfig();
     case "openGcpd":
       return openGcpdTabs();
     case "openSidebar":
       return openSidebar();
+    case "openRepository":
+      return openRepository();
     case "openShortcutSettings":
       return openShortcutSettings();
     default:
@@ -397,7 +487,9 @@ ext.alarms.onAlarm.addListener((alarm) => {
 });
 
 ext.storage.onChanged.addListener(() => {
-  updateBadge().catch(() => {});
+  loadState()
+    .then((state) => updateBadge(state))
+    .catch(() => {});
 });
 
 ext.tabs?.onUpdated?.addListener((tabId, changeInfo) => {

@@ -8,14 +8,33 @@ describe("manifest", () => {
     const manifest = JSON.parse(fs.readFileSync("extension/manifest.json", "utf8"));
 
     assert.equal(manifest.manifest_version, 3);
+    assert.equal(manifest.default_locale, "en");
+    assert.equal(manifest.name, "__MSG_extName__");
+    assert.equal(manifest.description, "__MSG_extDescription__");
+    assert.deepEqual(manifest.icons, {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "64": "icons/icon-64.png",
+      "96": "icons/icon-96.png",
+      "128": "icons/icon-128.png"
+    });
     assert.deepEqual(manifest.permissions.sort(), ["activeTab", "alarms", "scripting", "sidePanel", "storage"]);
-    assert.deepEqual(manifest.optional_host_permissions, ["https://steamcommunity.com/*"]);
+    assert.deepEqual(manifest.host_permissions, ["https://steamcommunity.com/*"]);
+    assert.equal(manifest.optional_host_permissions, undefined);
     assert.equal(manifest.action.default_popup, "popup.html");
+    assert.equal(manifest.action.default_title, "__MSG_actionDefaultTitle__");
+    assert.deepEqual(manifest.action.default_icon, {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    });
     assert.equal(manifest.side_panel.default_path, "sidebar.html");
     assert.equal(manifest.background.service_worker, "background.js");
     assert.equal(manifest.background.scripts, undefined);
-    assert.equal(manifest.commands._execute_action.description, "Open popup");
-    assert.equal(manifest.commands["open-sidebar"].description, "Open sidebar");
+    assert.equal(manifest.commands._execute_action.description, "__MSG_commandOpenPopup__");
+    assert.equal(manifest.commands["open-sidebar"].description, "__MSG_commandOpenSidebar__");
     assert.equal(manifest.commands._execute_action.suggested_key, undefined);
     assert.equal(manifest.commands["open-sidebar"].suggested_key, undefined);
   });
@@ -24,10 +43,36 @@ describe("manifest", () => {
     const manifest = JSON.parse(fs.readFileSync("extension/manifest.firefox.json", "utf8"));
 
     assert.equal(manifest.manifest_version, 3);
+    assert.equal(manifest.default_locale, "en");
+    assert.equal(manifest.name, "__MSG_extName__");
+    assert.equal(manifest.description, "__MSG_extDescription__");
+    assert.deepEqual(manifest.icons, {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "64": "icons/icon-64.png",
+      "96": "icons/icon-96.png",
+      "128": "icons/icon-128.png"
+    });
     assert.deepEqual(manifest.permissions.sort(), ["activeTab", "alarms", "scripting", "storage"]);
+    assert.deepEqual(manifest.host_permissions, ["https://steamcommunity.com/*"]);
     assert.equal(manifest.permissions.includes("sidePanel"), false);
     assert.equal(manifest.action.default_popup, "popup.html");
+    assert.equal(manifest.action.default_title, "__MSG_actionDefaultTitle__");
+    assert.deepEqual(manifest.action.default_icon, {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    });
     assert.equal(manifest.sidebar_action.default_panel, "sidebar.html");
+    assert.equal(manifest.sidebar_action.default_title, "__MSG_actionDefaultTitle__");
+    assert.deepEqual(manifest.sidebar_action.default_icon, {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    });
     assert.equal(manifest.side_panel, undefined);
     assert.deepEqual(manifest.background.scripts, ["background.js"]);
     assert.equal(manifest.background.service_worker, undefined);
@@ -49,7 +94,13 @@ describe("manifest", () => {
     assert.equal(firefoxManifest.sidebar_action.default_panel, "sidebar.html");
     assert.equal(fs.existsSync("dist/chrome/popup.html"), true);
     assert.equal(fs.existsSync("dist/chrome/sidebar.html"), true);
+    assert.equal(fs.existsSync("dist/chrome/icons/icon-128.png"), true);
+    assert.equal(fs.existsSync("dist/chrome/_locales/en/messages.json"), true);
+    assert.equal(fs.existsSync("dist/chrome/_locales/es/messages.json"), true);
     assert.equal(fs.existsSync("dist/firefox/popup.html"), true);
     assert.equal(fs.existsSync("dist/firefox/sidebar.html"), true);
+    assert.equal(fs.existsSync("dist/firefox/icons/icon-128.png"), true);
+    assert.equal(fs.existsSync("dist/firefox/_locales/en/messages.json"), true);
+    assert.equal(fs.existsSync("dist/firefox/_locales/es/messages.json"), true);
   });
 });

@@ -123,24 +123,24 @@ export function formatDuration(ms) {
 export function getBadgeInfo(state, now = new Date()) {
   const timer = getTimerState(state, now);
   if (timer.level === "unknown") {
-    return { text: "?", color: "#6b7280", title: "Missing data" };
+    return { text: "?", color: "#555555", title: "Missing data" };
   }
   if (timer.level === "stale_rating") {
-    return { text: "RATE", color: "#f59e0b", title: "Update CS Rating after latest match" };
+    return { text: "RATE", color: "#FFB900", title: "Update CS Rating after latest match" };
   }
   if (timer.level === "expired") {
-    return { text: "EXP", color: "#dc2626", title: "Past safe play window" };
+    return { text: "EXP", color: "#FFB900", title: "Past safe play window" };
   }
 
   const text = formatDuration(timer.expiry.msUntilPlayBefore).slice(0, 4);
   const colors = {
-    ok: "#15803d",
-    warning: "#f59e0b",
-    urgent: "#dc2626"
+    ok: "#FFB900",
+    warning: "#FFB900",
+    urgent: "#FFB900"
   };
   return {
     text,
-    color: colors[timer.level] ?? "#6b7280",
+    color: colors[timer.level] ?? "#555555",
     title: timer.label
   };
 }

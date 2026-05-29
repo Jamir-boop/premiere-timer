@@ -1,6 +1,7 @@
 <p align="center">
-  <img src="extension/icons/icon-128.png" alt="Premiere Timer Icon" width="128">
+  <img src="extension/icons/icon-128.png" alt="Premiere Timer Icon" width="128" height="128">
 </p>
+
 
 # Premiere Timer Extension
 
