@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  extractSteamGcpdLoadMoreState,
   extractDateCandidates,
   htmlToText,
   looksLoggedOut,
@@ -15,6 +16,50 @@ describe("Steam GCPD parser", () => {
 
   it("strips HTML to text", () => {
     assert.equal(htmlToText("<table><tr><td>May&nbsp;27, 2026 @ 7:11pm</td></tr></table>"), "May 27, 2026 @ 7:11pm");
+  });
+
+  it("extracts Steam load-more state", () => {
+    const html = `
+      <script>
+        var g_sessionID = "abc123";
+        var g_sGcContinueToken = '3823456766813798400';
+      </script>
+      <a id="load_more_clickable" onclick="ElementsContainerHistory_LoadMore(); return false;">
+        <div id="load_more_button">Load More History</div>
+      </a>
+    `;
+
+    assert.deepEqual(extractSteamGcpdLoadMoreState(html), {
+      continueToken: "3823456766813798400",
+      sessionId: "abc123"
+    });
+  });
+
+  it("does not treat load-more continue date as a match", () => {
+    const html = `
+      <div id="personaldata_elements_container" style="display: none;">
+        <table class="generic_kv_table csgo_scoreboard_root">
+          <tbody>
+            <tr><th class="col_left">Map</th><th>Match Results</th></tr>
+          </tbody>
+        </table>
+      </div>
+      <script>
+        var g_sessionID = "abc123";
+        var g_sGcContinueToken = '3823456766813798400';
+      </script>
+      <div class="load_more_history_area">
+        <div id="load_more_button_continue_text" class="returnLink">2026-06-01</div>
+        <a id="load_more_clickable" onclick="ElementsContainerHistory_LoadMore(); return false;">
+          <div id="load_more_button" class="btnv6_blue_hoverfade btn_medium">Load More History</div>
+        </a>
+      </div>
+    `;
+
+    const result = parseSteamGcpdMatchHistory(html, new Date("2026-06-02T12:00:00.000Z"));
+
+    assert.equal(result.status, "no_premier_matches");
+    assert.deepEqual(result.candidates, []);
   });
 
   it("extracts newest date from Steam-like page", () => {

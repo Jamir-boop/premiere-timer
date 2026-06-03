@@ -1,7 +1,11 @@
 import { getBadgeInfo, getTimerState, normalizeRating } from "./lib/calc.js";
 import { ext, getStorage, hasApiPermission, hasPermission, setStorage } from "./lib/ext-api.js";
 import { badgeTitle, createTranslator, getBrowserLanguageCandidates, normalizeLanguagePreference } from "./lib/i18n.js";
-import { parseSteamGcpdMatchHistory, parseSteamGcpdMatchmakingRating } from "./lib/parser.js";
+import {
+  extractSteamGcpdLoadMoreState,
+  parseSteamGcpdMatchHistory,
+  parseSteamGcpdMatchmakingRating
+} from "./lib/parser.js";
 import {
   EXPIRY_REMINDER_ALARM,
   getReminderPlans,
@@ -25,6 +29,7 @@ import {
 const CONTENT_SCRIPT_ID = "steam-gcpd-auto-update";
 const REPOSITORY_URL = "https://github.com/Jamir-boop/premiere-timer";
 const NOTIFICATIONS_PERMISSION = "notifications";
+const MAX_MATCH_HISTORY_LOAD_MORE_PAGES = 3;
 const guidedTabs = new Map();
 
 async function loadState() {
@@ -294,13 +299,16 @@ async function fetchSteamPage(url) {
     throw new Error(`Steam returned HTTP ${response.status}.`);
   }
 
-  return response.text();
+  return {
+    html: await response.text(),
+    url: response.url || url
+  };
 }
 
 async function fetchAndParseMatchHistory(now) {
   try {
-    const html = await fetchSteamPage(GCPD_MATCH_URL);
-    return parseSteamGcpdMatchHistory(html, now);
+    const page = await fetchSteamPage(GCPD_MATCH_URL);
+    return parseMatchHistoryWithLoadMore(page.html, page.url, now);
   } catch (error) {
     return { status: "error", latestPremierMatchAt: null, candidates: [], error: error.message };
   }
@@ -308,11 +316,70 @@ async function fetchAndParseMatchHistory(now) {
 
 async function fetchAndParseMatchmakingRating() {
   try {
-    const html = await fetchSteamPage(GCPD_MATCHMAKING_URL);
-    return parseSteamGcpdMatchmakingRating(html);
+    const page = await fetchSteamPage(GCPD_MATCHMAKING_URL);
+    return parseSteamGcpdMatchmakingRating(page.html);
   } catch (error) {
     return { status: "error", currentRating: null, error: error.message };
   }
+}
+
+async function parseMatchHistoryWithLoadMore(html, pageUrl, now) {
+  const initialResult = parseSteamGcpdMatchHistory(html, now);
+  if (initialResult.status !== "no_premier_matches") {
+    return initialResult;
+  }
+
+  let loadMoreState = extractSteamGcpdLoadMoreState(html);
+  if (!loadMoreState) {
+    return initialResult;
+  }
+
+  for (let pageIndex = 0; pageIndex < MAX_MATCH_HISTORY_LOAD_MORE_PAGES; pageIndex += 1) {
+    const data = await fetchMatchHistoryLoadMore(pageUrl, loadMoreState);
+    if (!data?.success) {
+      throw new Error("Steam match history load-more request failed.");
+    }
+
+    if (typeof data.html === "string" && data.html.trim()) {
+      const result = parseSteamGcpdMatchHistory(data.html, now);
+      if (result.status === "ok" || result.status === "needs_login") {
+        return result;
+      }
+    }
+
+    if (!data.continue_token) {
+      break;
+    }
+
+    loadMoreState = {
+      ...loadMoreState,
+      continueToken: data.continue_token
+    };
+  }
+
+  return initialResult;
+}
+
+async function fetchMatchHistoryLoadMore(pageUrl, loadMoreState) {
+  const url = new URL(pageUrl || GCPD_MATCH_URL);
+  url.search = "";
+  url.search = new URLSearchParams({
+    ajax: "1",
+    tab: "matchhistorypremier",
+    continue_token: loadMoreState.continueToken,
+    sessionid: loadMoreState.sessionId
+  }).toString();
+
+  const response = await fetch(url.toString(), {
+    credentials: "include",
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    throw new Error(`Steam returned HTTP ${response.status}.`);
+  }
+
+  return response.json();
 }
 
 function applyParsedResults(state, { matchResult = null, ratingResult = null, source, now }) {
@@ -380,7 +447,7 @@ async function parseProvidedHtml(html, source = "active_tab", url = "", fallback
   const pageType = getSteamGcpdPageType(url) || fallbackType;
 
   if (pageType === "match_history") {
-    const matchResult = parseSteamGcpdMatchHistory(html, now);
+    const matchResult = await parseMatchHistoryWithLoadMore(html, url, now);
     state = applyParsedResults(state, { matchResult, source, now });
     return {
       state: await saveState(state),

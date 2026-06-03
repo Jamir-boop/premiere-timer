@@ -27,6 +27,24 @@ const MONTHS = {
 
 const MONTH_PATTERN = Object.keys(MONTHS).sort((a, b) => b.length - a.length).join("|");
 
+export function extractSteamGcpdLoadMoreState(html) {
+  if (!html || typeof html !== "string") {
+    return null;
+  }
+
+  const hasLoadMore =
+    /\bid\s*=\s*["']?load_more_clickable["']?/i.test(html) ||
+    /\bElementsContainerHistory_LoadMore\s*\(/.test(html);
+  const continueToken = extractJsStringValue(html, "g_sGcContinueToken");
+  const sessionId = extractJsStringValue(html, "g_sessionID");
+
+  if (!hasLoadMore || !continueToken || !sessionId) {
+    return null;
+  }
+
+  return { continueToken, sessionId };
+}
+
 export function parseSteamGcpdMatchHistory(html, now = new Date()) {
   if (!html || typeof html !== "string") {
     return { status: "empty", latestPremierMatchAt: null, candidates: [] };
@@ -461,4 +479,21 @@ function extractStrictRatingNumbers(text) {
   }
 
   return ratings;
+}
+
+function extractJsStringValue(html, name) {
+  const safeName = escapeRegExp(name);
+  const match = html.match(new RegExp(`\\b(?:var\\s+)?${safeName}\\s*=\\s*(['"])([\\s\\S]*?)\\1`));
+  return match ? decodeJsStringLiteral(match[2]) : null;
+}
+
+function decodeJsStringLiteral(value) {
+  return String(value || "")
+    .replace(/\\x([0-9a-fA-F]{2})/g, (_, hex) => String.fromCharCode(Number.parseInt(hex, 16)))
+    .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(Number.parseInt(hex, 16)))
+    .replace(/\\(['"\\])/g, "$1");
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
