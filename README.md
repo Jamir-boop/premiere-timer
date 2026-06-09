@@ -9,6 +9,8 @@ Local CS2 Premier CS Rating expiry timer using Steam Personal Game Data.
 [![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Install-brightgreen)](https://chromewebstore.google.com/detail/premiere-timer/nkaaekcihebjfnnhpmmpoajignbcpmfd?authuser=0&hl=en)
 [![Firefox Add-ons](https://img.shields.io/badge/Firefox%20Add--ons-Install-blue)](https://addons.mozilla.org/en-US/firefox/addon/premiere-timer/)
 
+![localized-screenshots](https://raw.githubusercontent.com/Jamir-boop/markdown-images/master/2026-06-09_13-46-15-localized-screenshots.png)
+
 ## Installation
 
 ### From Source (Developer Mode)
