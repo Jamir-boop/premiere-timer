@@ -1,4 +1,4 @@
-import { formatDuration, getTimerState } from "./lib/calc.js";
+import { formatDuration, getPremierRankInfo, getTimerState } from "./lib/calc.js";
 import {
   ext,
   hasApiPermission,
@@ -216,7 +216,7 @@ function render() {
 
   elements.statusText.textContent = statusText(timer, state);
   elements.statusDot.className = "";
-  elements.statusDot.classList.add(statusClass(timer.level));
+  elements.statusDot.classList.add(statusClass(timer.level, state));
   elements.onboarding.hidden = hasTimerData(state);
   elements.stepAccess.classList.toggle("done", hasSteamAccess);
   elements.stepSync.classList.toggle("done", state.lastFetchStatus === "ok");
@@ -226,6 +226,7 @@ function render() {
     ? t("playBefore", { value: formatDateTime(state.playBeforeAt) })
     : t("steamSyncNeeded");
   elements.ratingValue.textContent = formatRating(state.currentRating);
+  renderPremierRank(state.currentRating);
   elements.latestMatch.textContent = state.latestPremierMatchAt ? formatDateTime(state.latestPremierMatchAt) : "--";
   elements.fetchValue.textContent = state.lastFetchAt
     ? formatRelativeWithSuffix(state.lastFetchAt)
@@ -311,6 +312,20 @@ function renderPanels() {
     panel.hidden = activePanel !== panelName;
     buttons[panelName].setAttribute("aria-pressed", String(activePanel === panelName));
   }
+}
+
+function renderPremierRank(rating) {
+  const rank = getPremierRankInfo(rating);
+  if (!rank) {
+    document.documentElement.style.setProperty("--rank-color", "#C7D0D9");
+    document.documentElement.style.setProperty("--rank-bg", "url(\"assets/ratings/rating.common.png\")");
+    elements.ratingValue.classList.add("missing");
+    return;
+  }
+
+  document.documentElement.style.setProperty("--rank-color", rank.color);
+  document.documentElement.style.setProperty("--rank-bg", `url("${rank.image}")`);
+  elements.ratingValue.classList.remove("missing");
 }
 
 async function saveThemeFromInputs() {
@@ -438,13 +453,29 @@ function needsManualFallback(currentState) {
   return (
     currentState.ratingNeedsUpdate ||
     currentState.ratingStatus === "rating_not_found" ||
-    currentState.ratingStatus === "error"
+    currentState.ratingStatus === "error" ||
+    !currentState.latestPremierMatchAt && (
+      currentState.latestMatchStatus === "history_scan_limited" ||
+      currentState.latestMatchStatus === "pagination_unavailable" ||
+      currentState.latestMatchStatus === "rate_limited" ||
+      currentState.latestMatchStatus === "error" ||
+      currentState.latestMatchStatus === "no_premier_matches"
+    )
   );
 }
 
 function statusText(timer, currentState) {
   if (currentState.latestMatchStatus === "needs_login" || currentState.ratingStatus === "needs_login") {
-    return t("loginRequired");
+    return t("steamLoginRequired");
+  }
+  if (currentState.latestMatchStatus === "history_scan_limited") {
+    return t("historyScanLimited");
+  }
+  if (currentState.latestMatchStatus === "pagination_unavailable") {
+    return t("paginationUnavailable");
+  }
+  if (currentState.lastFetchStatus === "rate_limited") {
+    return t("steamRateLimited");
   }
   if (currentState.latestMatchStatus === "no_premier_matches") {
     return t("noPremierMatchFound");
@@ -458,7 +489,16 @@ function statusText(timer, currentState) {
   return timerLabel(timer.level, translator);
 }
 
-function statusClass(level) {
+function statusClass(level, currentState = {}) {
+  if (
+    currentState.latestMatchStatus === "needs_login" ||
+    currentState.ratingStatus === "needs_login" ||
+    currentState.latestMatchStatus === "history_scan_limited" ||
+    currentState.latestMatchStatus === "pagination_unavailable" ||
+    currentState.lastFetchStatus === "rate_limited"
+  ) {
+    return "warning";
+  }
   if (level === "ok") {
     return "ok";
   }
@@ -489,11 +529,14 @@ function formatStatus(status) {
   const labels = {
     empty: "statusEmpty",
     error: "statusError",
+    history_scan_limited: "statusHistoryScanLimited",
     needs_login: "statusNeedsLogin",
     never: "statusNever",
     no_permission: "statusNoPermission",
     no_premier_matches: "statusNoPremierMatches",
     ok: "statusOk",
+    pagination_unavailable: "statusPaginationUnavailable",
+    rate_limited: "statusRateLimited",
     rating_not_found: "statusRatingNotFound"
   };
   return labels[status] ? t(labels[status]) : status || t("never");
@@ -554,6 +597,15 @@ function fetchStatusMessage(currentState) {
   }
   if (currentState.latestMatchStatus === "needs_login" || currentState.ratingStatus === "needs_login") {
     return t("steamLoginRequired");
+  }
+  if (currentState.latestMatchStatus === "history_scan_limited") {
+    return t("historyScanLimited");
+  }
+  if (currentState.latestMatchStatus === "pagination_unavailable") {
+    return t("paginationUnavailable");
+  }
+  if (currentState.lastFetchStatus === "rate_limited") {
+    return t("steamRateLimited");
   }
   if (currentState.lastFetchStatus === "no_permission") {
     return t("steamAccessNotAllowed");

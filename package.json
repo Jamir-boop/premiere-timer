@@ -1,6 +1,6 @@
 {
   "name": "premiere-timer",
-  "version": "1.0.2",
+  "version": "1.0.6",
   "private": true,
   "type": "module",
   "scripts": {

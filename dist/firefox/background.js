@@ -3,6 +3,9 @@ import { ext, getStorage, hasApiPermission, hasPermission, setStorage } from "./
 import { badgeTitle, createTranslator, getBrowserLanguageCandidates, normalizeLanguagePreference } from "./lib/i18n.js";
 import {
   extractSteamGcpdLoadMoreState,
+  inspectSteamGcpdLoadMoreState,
+  looksLoggedOut,
+  looksSteamLoginUrl,
   parseSteamGcpdMatchHistory,
   parseSteamGcpdMatchmakingRating
 } from "./lib/parser.js";
@@ -29,7 +32,11 @@ import {
 const CONTENT_SCRIPT_ID = "steam-gcpd-auto-update";
 const REPOSITORY_URL = "https://github.com/Jamir-boop/premiere-timer";
 const NOTIFICATIONS_PERMISSION = "notifications";
-const MAX_MATCH_HISTORY_LOAD_MORE_PAGES = 3;
+const USER_MATCH_HISTORY_LOAD_MORE_PAGES = 25;
+const BACKGROUND_MATCH_HISTORY_LOAD_MORE_PAGES = 5;
+const MATCH_HISTORY_LOAD_MORE_DELAY_MS = 1000;
+const USER_MATCH_HISTORY_SCAN_TIME_LIMIT_MS = 60 * 1000;
+const BACKGROUND_MATCH_HISTORY_SCAN_TIME_LIMIT_MS = 15 * 1000;
 const guidedTabs = new Map();
 
 async function loadState() {
@@ -259,7 +266,7 @@ async function injectContentScriptIntoOpenGcpdTabs() {
     }).catch(() => null)));
 }
 
-async function refreshFromSteam() {
+export async function refreshFromSteam(options = {}) {
   let state = await loadState();
   const now = new Date();
 
@@ -275,8 +282,9 @@ async function refreshFromSteam() {
 
   await ensureContentScriptRegistration();
 
+  const matchHistoryScanOptions = getMatchHistoryScanOptions(options.scanMode, options);
   const [matchResult, ratingResult] = await Promise.all([
-    fetchAndParseMatchHistory(now),
+    fetchAndParseMatchHistory(now, matchHistoryScanOptions),
     fetchAndParseMatchmakingRating()
   ]);
 
@@ -289,26 +297,51 @@ async function refreshFromSteam() {
   return saveState(state);
 }
 
+export function getMatchHistoryScanOptions(scanMode = "user", overrides = {}) {
+  const isBackground = scanMode === "background";
+  return {
+    maxLoadMorePages: isBackground ? BACKGROUND_MATCH_HISTORY_LOAD_MORE_PAGES : USER_MATCH_HISTORY_LOAD_MORE_PAGES,
+    loadMoreDelayMs: overrides.matchHistoryLoadMoreDelayMs ?? MATCH_HISTORY_LOAD_MORE_DELAY_MS,
+    timeLimitMs: overrides.matchHistoryScanTimeLimitMs ?? (
+      isBackground ? BACKGROUND_MATCH_HISTORY_SCAN_TIME_LIMIT_MS : USER_MATCH_HISTORY_SCAN_TIME_LIMIT_MS
+    )
+  };
+}
+
 async function fetchSteamPage(url) {
   const response = await fetch(url, {
     credentials: "include",
     cache: "no-store"
   });
 
+  const html = await response.text();
+  const classifiedStatus = classifySteamResponse(response, html);
+  if (classifiedStatus) {
+    return {
+      status: classifiedStatus,
+      html,
+      url: response.url || url
+    };
+  }
+
   if (!response.ok) {
     throw new Error(`Steam returned HTTP ${response.status}.`);
   }
 
   return {
-    html: await response.text(),
+    status: "ok",
+    html,
     url: response.url || url
   };
 }
 
-async function fetchAndParseMatchHistory(now) {
+export async function fetchAndParseMatchHistory(now, scanOptions = getMatchHistoryScanOptions()) {
   try {
     const page = await fetchSteamPage(GCPD_MATCH_URL);
-    return parseMatchHistoryWithLoadMore(page.html, page.url, now);
+    if (page.status !== "ok") {
+      return matchHistoryStatus(page.status);
+    }
+    return parseMatchHistoryWithLoadMore(page.html, page.url, now, scanOptions);
   } catch (error) {
     return { status: "error", latestPremierMatchAt: null, candidates: [], error: error.message };
   }
@@ -317,47 +350,90 @@ async function fetchAndParseMatchHistory(now) {
 async function fetchAndParseMatchmakingRating() {
   try {
     const page = await fetchSteamPage(GCPD_MATCHMAKING_URL);
+    if (page.status !== "ok") {
+      return { status: page.status, currentRating: null };
+    }
     return parseSteamGcpdMatchmakingRating(page.html);
   } catch (error) {
     return { status: "error", currentRating: null, error: error.message };
   }
 }
 
-async function parseMatchHistoryWithLoadMore(html, pageUrl, now) {
+export async function parseMatchHistoryWithLoadMore(html, pageUrl, now, options = {}) {
   const initialResult = parseSteamGcpdMatchHistory(html, now);
   if (initialResult.status !== "no_premier_matches") {
     return initialResult;
   }
 
-  let loadMoreState = extractSteamGcpdLoadMoreState(html);
-  if (!loadMoreState) {
+  const pagination = inspectSteamGcpdLoadMoreState(html);
+  if (!pagination.hasLoadMore) {
     return initialResult;
   }
 
-  for (let pageIndex = 0; pageIndex < MAX_MATCH_HISTORY_LOAD_MORE_PAGES; pageIndex += 1) {
-    const data = await fetchMatchHistoryLoadMore(pageUrl, loadMoreState);
+  let loadMoreState = extractSteamGcpdLoadMoreState(html);
+  if (!loadMoreState) {
+    return matchHistoryStatus("pagination_unavailable");
+  }
+
+  const maxLoadMorePages = options.maxLoadMorePages ?? USER_MATCH_HISTORY_LOAD_MORE_PAGES;
+  const loadMoreDelayMs = options.loadMoreDelayMs ?? MATCH_HISTORY_LOAD_MORE_DELAY_MS;
+  const timeLimitMs = options.timeLimitMs ?? USER_MATCH_HISTORY_SCAN_TIME_LIMIT_MS;
+  const startedAt = Date.now();
+  const seenTokens = new Set([loadMoreState.continueToken]);
+  const seenHtml = new Set([normalizeHistoryHtml(html)].filter(Boolean));
+
+  for (let pageIndex = 0; pageIndex < maxLoadMorePages; pageIndex += 1) {
+    if (isHistoryScanTimedOut(startedAt, timeLimitMs)) {
+      return matchHistoryStatus("history_scan_limited");
+    }
+    if (pageIndex > 0) {
+      await delay(loadMoreDelayMs);
+      if (isHistoryScanTimedOut(startedAt, timeLimitMs)) {
+        return matchHistoryStatus("history_scan_limited");
+      }
+    }
+
+    const loadMoreResult = await fetchMatchHistoryLoadMore(pageUrl, loadMoreState);
+    if (loadMoreResult.status !== "ok") {
+      return matchHistoryStatus(loadMoreResult.status);
+    }
+
+    const data = loadMoreResult.data;
     if (!data?.success) {
       throw new Error("Steam match history load-more request failed.");
     }
 
-    if (typeof data.html === "string" && data.html.trim()) {
+    const htmlText = typeof data.html === "string" ? data.html : "";
+    const normalizedHtml = normalizeHistoryHtml(htmlText);
+    if (normalizedHtml) {
       const result = parseSteamGcpdMatchHistory(data.html, now);
       if (result.status === "ok" || result.status === "needs_login") {
         return result;
       }
+      if (seenHtml.has(normalizedHtml)) {
+        return data.continue_token ? matchHistoryStatus("history_scan_limited") : initialResult;
+      }
+      seenHtml.add(normalizedHtml);
+    } else {
+      return data.continue_token ? matchHistoryStatus("history_scan_limited") : initialResult;
     }
 
     if (!data.continue_token) {
-      break;
+      return initialResult;
     }
 
+    if (seenTokens.has(data.continue_token)) {
+      return matchHistoryStatus("history_scan_limited");
+    }
+
+    seenTokens.add(data.continue_token);
     loadMoreState = {
       ...loadMoreState,
       continueToken: data.continue_token
     };
   }
 
-  return initialResult;
+  return loadMoreState.continueToken ? matchHistoryStatus("history_scan_limited") : initialResult;
 }
 
 async function fetchMatchHistoryLoadMore(pageUrl, loadMoreState) {
@@ -366,6 +442,7 @@ async function fetchMatchHistoryLoadMore(pageUrl, loadMoreState) {
   url.search = new URLSearchParams({
     ajax: "1",
     tab: "matchhistorypremier",
+    l: "english",
     continue_token: loadMoreState.continueToken,
     sessionid: loadMoreState.sessionId
   }).toString();
@@ -375,11 +452,70 @@ async function fetchMatchHistoryLoadMore(pageUrl, loadMoreState) {
     cache: "no-store"
   });
 
+  const text = await response.text();
+  const classifiedStatus = classifySteamResponse(response, text);
+  if (classifiedStatus) {
+    return { status: classifiedStatus, data: null };
+  }
+
   if (!response.ok) {
     throw new Error(`Steam returned HTTP ${response.status}.`);
   }
 
-  return response.json();
+  return { status: "ok", data: JSON.parse(text) };
+}
+
+function matchHistoryStatus(status) {
+  return { status, latestPremierMatchAt: null, candidates: [] };
+}
+
+function classifySteamResponse(response, text) {
+  if (
+    response.status === 429 ||
+    steamResponseHeader(response, "retry-after") ||
+    steamResponseHeader(response, "x-eresult") === "84" ||
+    looksSteamRateLimited(text)
+  ) {
+    return "rate_limited";
+  }
+
+  if (looksSteamLoginUrl(response.url) || looksLoggedOut(text)) {
+    return "needs_login";
+  }
+
+  return null;
+}
+
+function steamResponseHeader(response, name) {
+  return String(response.headers?.get?.(name) || "").trim();
+}
+
+function looksSteamRateLimited(text) {
+  const lower = String(text || "").toLowerCase();
+  return (
+    lower.includes("too many requests") ||
+    lower.includes("rate limit") ||
+    lower.includes("rate-limit") ||
+    lower.includes("rate_limited") ||
+    lower.includes("eresult 84") ||
+    lower.includes("\"eresult\":84") ||
+    lower.includes("\"eresult\": 84")
+  );
+}
+
+function normalizeHistoryHtml(html) {
+  return String(html || "").replace(/\s+/g, " ").trim();
+}
+
+function isHistoryScanTimedOut(startedAt, timeLimitMs) {
+  return Number.isFinite(timeLimitMs) && timeLimitMs >= 0 && Date.now() - startedAt >= timeLimitMs;
+}
+
+function delay(ms) {
+  if (!ms || ms <= 0) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function applyParsedResults(state, { matchResult = null, ratingResult = null, source, now }) {
@@ -429,8 +565,17 @@ function aggregateFetchStatus(matchStatus, ratingStatus) {
   if (statuses.includes("needs_login")) {
     return "needs_login";
   }
+  if (statuses.includes("rate_limited")) {
+    return "rate_limited";
+  }
   if (statuses.includes("error")) {
     return "error";
+  }
+  if (statuses.includes("history_scan_limited")) {
+    return "history_scan_limited";
+  }
+  if (statuses.includes("pagination_unavailable")) {
+    return "pagination_unavailable";
   }
   if (matchStatus && matchStatus !== "ok") {
     return matchStatus;
@@ -637,7 +782,7 @@ ext.runtime.onStartup.addListener(() => {
 
 ext.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === REFRESH_ALARM) {
-    refreshFromSteam().catch(() => {});
+    refreshFromSteam({ scanMode: "background" }).catch(() => {});
     return;
   }
   handleReminderAlarm(alarm.name).catch(() => {});

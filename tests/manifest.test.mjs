@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 
+const GOOGLE_FONTS_CSP = "script-src 'self'; object-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;";
+
 describe("manifest", () => {
   it("uses Chrome MV3 service worker, popup, side panel, and empty commands", () => {
     const manifest = JSON.parse(fs.readFileSync("extension/manifest.json", "utf8"));
@@ -23,6 +25,7 @@ describe("manifest", () => {
     assert.deepEqual(manifest.optional_permissions, ["notifications"]);
     assert.deepEqual(manifest.host_permissions, ["https://steamcommunity.com/*"]);
     assert.equal(manifest.optional_host_permissions, undefined);
+    assert.equal(manifest.content_security_policy.extension_pages, GOOGLE_FONTS_CSP);
     assert.equal(manifest.action.default_popup, "popup.html");
     assert.equal(manifest.action.default_title, "__MSG_actionDefaultTitle__");
     assert.deepEqual(manifest.action.default_icon, {
@@ -58,6 +61,7 @@ describe("manifest", () => {
     assert.deepEqual(manifest.permissions.sort(), ["activeTab", "alarms", "scripting", "storage"]);
     assert.deepEqual(manifest.optional_permissions, ["notifications"]);
     assert.deepEqual(manifest.host_permissions, ["https://steamcommunity.com/*"]);
+    assert.equal(manifest.content_security_policy.extension_pages, GOOGLE_FONTS_CSP);
     assert.equal(manifest.permissions.includes("sidePanel"), false);
     assert.equal(manifest.action.default_popup, "popup.html");
     assert.equal(manifest.action.default_title, "__MSG_actionDefaultTitle__");
@@ -97,9 +101,11 @@ describe("manifest", () => {
     const firefoxManifest = JSON.parse(fs.readFileSync("dist/firefox/manifest.json", "utf8"));
 
     assert.equal(chromeManifest.background.service_worker, "background.js");
+    assert.equal(chromeManifest.content_security_policy.extension_pages, GOOGLE_FONTS_CSP);
     assert.equal(chromeManifest.background.scripts, undefined);
     assert.equal(chromeManifest.side_panel.default_path, "sidebar.html");
     assert.deepEqual(firefoxManifest.background.scripts, ["background.js"]);
+    assert.equal(firefoxManifest.content_security_policy.extension_pages, GOOGLE_FONTS_CSP);
     assert.equal(firefoxManifest.background.service_worker, undefined);
     assert.equal(firefoxManifest.sidebar_action.default_panel, "sidebar.html");
     assert.deepEqual(firefoxManifest.browser_specific_settings.gecko.data_collection_permissions.required, ["none"]);

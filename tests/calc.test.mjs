@@ -5,6 +5,7 @@ import {
   formatDuration,
   getActiveDurationDays,
   getBadgeInfo,
+  getPremierRankInfo,
   normalizeRating
 } from "../extension/lib/calc.js";
 
@@ -21,6 +22,16 @@ describe("rating tiers", () => {
 
   it("normalizes formatted ratings", () => {
     assert.equal(normalizeRating("14,250"), 14250);
+  });
+
+  it("maps Premier rank backgrounds", () => {
+    assert.equal(getPremierRankInfo(0).key, "common");
+    assert.equal(getPremierRankInfo(5000).key, "uncommon");
+    assert.equal(getPremierRankInfo(10000).key, "rare");
+    assert.equal(getPremierRankInfo(15000).key, "mythical");
+    assert.equal(getPremierRankInfo(24575).key, "ancient");
+    assert.equal(getPremierRankInfo(30000).key, "unusual");
+    assert.equal(getPremierRankInfo(null), null);
   });
 });
 

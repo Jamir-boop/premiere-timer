@@ -4,7 +4,9 @@ import {
   extractSteamGcpdLoadMoreState,
   extractDateCandidates,
   htmlToText,
+  inspectSteamGcpdLoadMoreState,
   looksLoggedOut,
+  looksSteamLoginUrl,
   parseSteamGcpdMatchHistory,
   parseSteamGcpdMatchmakingRating
 } from "../extension/lib/parser.js";
@@ -12,6 +14,8 @@ import {
 describe("Steam GCPD parser", () => {
   it("detects login pages", () => {
     assert.equal(looksLoggedOut("<form id=\"loginForm\">Sign in to your Steam account</form>"), true);
+    assert.equal(parseSteamGcpdMatchHistory("<form id=\"loginForm\">Sign in to your Steam account</form>").status, "needs_login");
+    assert.equal(looksSteamLoginUrl("https://steamcommunity.com/login/home/?goto=gcpd"), true);
   });
 
   it("strips HTML to text", () => {
@@ -33,6 +37,20 @@ describe("Steam GCPD parser", () => {
       continueToken: "3823456766813798400",
       sessionId: "abc123"
     });
+  });
+
+  it("detects unavailable load-more state", () => {
+    const html = `
+      <script>var g_sessionID = "abc123";</script>
+      <a id="load_more_clickable" onclick="ElementsContainerHistory_LoadMore(); return false;">Load More</a>
+    `;
+
+    assert.deepEqual(inspectSteamGcpdLoadMoreState(html), {
+      hasLoadMore: true,
+      continueToken: null,
+      sessionId: "abc123"
+    });
+    assert.equal(extractSteamGcpdLoadMoreState(html), null);
   });
 
   it("does not treat load-more continue date as a match", () => {

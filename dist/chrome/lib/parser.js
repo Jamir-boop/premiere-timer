@@ -27,9 +27,9 @@ const MONTHS = {
 
 const MONTH_PATTERN = Object.keys(MONTHS).sort((a, b) => b.length - a.length).join("|");
 
-export function extractSteamGcpdLoadMoreState(html) {
+export function inspectSteamGcpdLoadMoreState(html) {
   if (!html || typeof html !== "string") {
-    return null;
+    return { hasLoadMore: false, continueToken: null, sessionId: null };
   }
 
   const hasLoadMore =
@@ -38,11 +38,15 @@ export function extractSteamGcpdLoadMoreState(html) {
   const continueToken = extractJsStringValue(html, "g_sGcContinueToken");
   const sessionId = extractJsStringValue(html, "g_sessionID");
 
-  if (!hasLoadMore || !continueToken || !sessionId) {
-    return null;
-  }
+  return { hasLoadMore, continueToken, sessionId };
+}
 
-  return { continueToken, sessionId };
+export function extractSteamGcpdLoadMoreState(html) {
+  const state = inspectSteamGcpdLoadMoreState(html);
+
+  return state.hasLoadMore && state.continueToken && state.sessionId
+    ? { continueToken: state.continueToken, sessionId: state.sessionId }
+    : null;
 }
 
 export function parseSteamGcpdMatchHistory(html, now = new Date()) {
@@ -111,9 +115,29 @@ export function looksLoggedOut(html) {
     lower.includes("steamlogin") ||
     lower.includes("global_action_link") && lower.includes(">login<") ||
     lower.includes("sign in to your steam account") ||
+    lower.includes("sign in through steam") ||
     lower.includes("login_btn_signin") ||
-    lower.includes("id=\"loginform\"")
+    lower.includes("id=\"loginform\"") ||
+    lower.includes("login_steam_parent")
   );
+}
+
+export function looksSteamLoginUrl(url) {
+  try {
+    const parsed = new URL(url);
+    const pathname = parsed.pathname.toLowerCase();
+    return (
+      parsed.hostname === "steamcommunity.com" &&
+      (
+        pathname === "/login" ||
+        pathname.startsWith("/login/") ||
+        pathname === "/openid/login" ||
+        pathname.startsWith("/openid/login/")
+      )
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function htmlToText(html) {

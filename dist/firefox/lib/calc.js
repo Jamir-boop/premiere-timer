@@ -26,6 +26,15 @@ export const RATING_TIERS = [
   { min: 23299, max: Number.POSITIVE_INFINITY, days: 8 }
 ];
 
+export const PREMIER_RANK_TIERS = [
+  { min: 0, max: 4999, key: "common", color: "#C7D0D9", image: "assets/ratings/rating.common.png" },
+  { min: 5000, max: 9999, key: "uncommon", color: "#65BAF3", image: "assets/ratings/rating.uncommon.png" },
+  { min: 10000, max: 14999, key: "rare", color: "#4D6FFF", image: "assets/ratings/rating.rare.png" },
+  { min: 15000, max: 19999, key: "mythical", color: "#8D3CFF", image: "assets/ratings/rating.mythical.png" },
+  { min: 20000, max: 29999, key: "ancient", color: "#FF4A4A", image: "assets/ratings/rating.ancient.png" },
+  { min: 30000, max: Number.POSITIVE_INFINITY, key: "unusual", color: "#FFD100", image: "assets/ratings/rating.unusual.png" }
+];
+
 export function normalizeRating(value) {
   if (value === null || value === undefined || value === "") {
     return null;
@@ -36,6 +45,15 @@ export function normalizeRating(value) {
     throw new Error("CS Rating must be a number from 0 to 99999.");
   }
   return rating;
+}
+
+export function getPremierRankInfo(ratingValue) {
+  const rating = normalizeRating(ratingValue);
+  if (rating === null) {
+    return null;
+  }
+
+  return PREMIER_RANK_TIERS.find((entry) => rating >= entry.min && rating <= entry.max) ?? PREMIER_RANK_TIERS.at(-1);
 }
 
 export function getActiveDurationDays(ratingValue) {

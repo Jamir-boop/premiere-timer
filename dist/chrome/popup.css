@@ -14,6 +14,10 @@
   --accent-outline: #FFB900;
   --border: #332500;
   --border-strong: #664A00;
+  --rank-color: #C7D0D9;
+  --rank-bg: url("assets/ratings/rating.common.png");
+  --display-font: "Roboto", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --rank-font: var(--display-font);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: var(--bg);
   color: var(--text);
@@ -50,7 +54,10 @@ ol {
 }
 
 h1 {
+  font-family: var(--display-font);
   font-size: 18px;
+  font-style: italic;
+  font-weight: 900;
   line-height: 1.2;
 }
 
@@ -123,7 +130,10 @@ dt,
 
 #countdown {
   color: var(--text);
+  font-family: var(--display-font);
   font-size: 34px;
+  font-style: italic;
+  font-weight: 900;
   line-height: 1.05;
   letter-spacing: 0;
 }
@@ -150,6 +160,16 @@ dt,
   background: var(--surface-1);
 }
 
+.facts div:first-child {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+}
+
+.facts div:first-child span {
+  grid-column: 1;
+}
+
 .facts strong,
 dd {
   min-width: 0;
@@ -158,6 +178,41 @@ dd {
   font-size: 13px;
   font-weight: 650;
   overflow-wrap: anywhere;
+}
+
+#ratingValue {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  justify-self: end;
+  width: 116px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  background-image: var(--rank-bg);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  color: var(--rank-color);
+  font-family: var(--display-font);
+  font-size: 22px;
+  font-style: italic;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  line-height: 1;
+  text-align: center;
+  text-shadow:
+    0 0 8px color-mix(in srgb, var(--rank-color) 45%, transparent),
+    0 2px 0 rgba(0, 0, 0, 0.65),
+    0 -1px 0 rgba(255, 255, 255, 0.22);
+  text-overflow: ellipsis;
+  filter: drop-shadow(0 5px 10px rgba(0, 0, 0, 0.4));
+  transform: translateY(-1px) skewX(-4deg);
+  white-space: nowrap;
+}
+
+#ratingValue.missing {
+  opacity: 0.45;
+  filter: grayscale(0.65);
 }
 
 .actions,
