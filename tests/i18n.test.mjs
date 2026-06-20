@@ -6,7 +6,7 @@ import {
   MESSAGES,
   normalizeLanguagePreference,
   resolveLanguage
-} from "../extension/lib/i18n.js";
+} from "../src/lib/i18n.js";
 
 describe("i18n", () => {
   it("detects Spanish browser languages", () => {
@@ -39,10 +39,11 @@ describe("i18n", () => {
 
   it("defines keys referenced by UI markup and controller", () => {
     const files = [
-      "extension/popup.html",
-      "extension/sidebar.html",
-      "extension/popup.js",
-      "extension/background.js"
+      "src/entrypoints/popup/index.html",
+      "src/entrypoints/sidebar.sidepanel/index.html",
+      "src/entrypoints/popup/popup.js",
+      "src/entrypoints/background.js",
+      "src/background.js"
     ];
 
     const keys = new Set();

@@ -4,7 +4,7 @@ import {
   getReminderKey,
   getReminderPlan,
   REMINDER_OFFSET_MS
-} from "../extension/lib/reminders.js";
+} from "../src/lib/reminders.js";
 
 const BASE_STATE = {
   remindersEnabled: true,

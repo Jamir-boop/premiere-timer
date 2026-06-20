@@ -7,7 +7,7 @@ import {
   getBadgeInfo,
   getPremierRankInfo,
   normalizeRating
-} from "../extension/lib/calc.js";
+} from "../src/lib/calc.js";
 
 describe("rating tiers", () => {
   it("maps known boundaries", () => {

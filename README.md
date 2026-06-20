@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="extension/icons/icon-128.png" alt="Premiere Timer Icon" width="128" height="128">
+  <img src="public/icons/icon-128.png" alt="Premiere Timer Icon" width="128" height="128">
 </p>
 
 # Premiere Timer Extension
@@ -18,12 +18,12 @@ Local CS2 Premier CS Rating expiry timer using Steam Personal Game Data.
 1. Open `chrome://extensions`
 2. Enable Developer mode
 3. Click "Load unpacked"
-4. Select the `dist/chrome/` folder
+4. Select the `.output/chrome-mv3/` folder
 
 #### Firefox
 1. Open `about:debugging#/runtime/this-firefox`
 2. Click "Load Temporary Add-on"
-3. Select the `manifest.json` file inside `dist/firefox/`
+3. Select the `manifest.json` file inside `.output/firefox-mv3/`
 
 ## Usage
 
@@ -45,15 +45,20 @@ Local CS2 Premier CS Rating expiry timer using Steam Personal Game Data.
 
 ## Development
 
-Run `npm install` to install dependencies.
-Use `npm run build` to generate distribution files in `dist/chrome/` and `dist/firefox/`.
+Run `pnpm install` to install dependencies and prepare WXT.
+
+- `pnpm dev` - Start Chrome dev mode with output in `.output/chrome-mv3-dev/`
+- `pnpm dev:firefox` - Start Firefox dev mode with output in `.output/firefox-mv3-dev/`
+- `pnpm test` - Run Node unit tests
+- `pnpm build` - Generate production builds in `.output/chrome-mv3/` and `.output/firefox-mv3/`
+- `pnpm zip` - Generate browser zip packages from WXT
 
 ## Files
 
-- `extension/` - Source code
-- `dist/chrome/` - Built Chrome extension
-- `dist/firefox/` - Built Firefox extension
-- `scripts/` - Build scripts
+- `src/` - WXT source code and entrypoints
+- `public/` - Static extension assets, icons, and locales
+- `.output/chrome-mv3/` - Built Chrome production output
+- `.output/firefox-mv3/` - Built Firefox production output
 - `tests/` - Unit tests
 
 ## Local Only

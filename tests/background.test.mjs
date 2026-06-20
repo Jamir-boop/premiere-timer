@@ -67,7 +67,7 @@ const {
   fetchAndParseMatchHistory,
   parseMatchHistoryWithLoadMore,
   refreshFromSteam
-} = await import("../extension/background.js");
+} = await import("../src/background.js");
 
 const MATCH_URL = "https://steamcommunity.com/my/gcpd/730/?tab=matchhistorypremier&l=english";
 const RATING_HTML = "<div>Premier Skill Group 14,250</div>";

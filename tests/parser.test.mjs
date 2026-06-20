@@ -9,7 +9,7 @@ import {
   looksSteamLoginUrl,
   parseSteamGcpdMatchHistory,
   parseSteamGcpdMatchmakingRating
-} from "../extension/lib/parser.js";
+} from "../src/lib/parser.js";
 
 describe("Steam GCPD parser", () => {
   it("detects login pages", () => {

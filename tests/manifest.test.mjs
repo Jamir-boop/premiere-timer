@@ -1,17 +1,46 @@
-import { describe, it } from "node:test";
+import { after, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import path from "node:path";
 
 const GOOGLE_FONTS_CSP = "script-src 'self'; object-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;";
+const wxtCli = path.join(process.cwd(), "node_modules", "wxt", "bin", "wxt.mjs");
+const outputDir = ".output";
+const chromeOutputDir = path.join(outputDir, "chrome-mv3");
+const firefoxOutputDir = path.join(outputDir, "firefox-mv3");
+const packageVersion = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
+
+let builtOutputs = null;
+
+function buildOutputs() {
+  if (builtOutputs) {
+    return builtOutputs;
+  }
+
+  fs.rmSync(outputDir, { recursive: true, force: true });
+  execFileSync(process.execPath, [wxtCli, "build", "--browser", "chrome"], { stdio: "pipe" });
+  execFileSync(process.execPath, [wxtCli, "build", "--browser", "firefox"], { stdio: "pipe" });
+
+  builtOutputs = {
+    chromeManifest: JSON.parse(fs.readFileSync(path.join(chromeOutputDir, "manifest.json"), "utf8")),
+    firefoxManifest: JSON.parse(fs.readFileSync(path.join(firefoxOutputDir, "manifest.json"), "utf8"))
+  };
+  return builtOutputs;
+}
+
+after(() => {
+  fs.rmSync(outputDir, { recursive: true, force: true });
+});
 
 describe("manifest", () => {
-  it("uses Chrome MV3 service worker, popup, side panel, and empty commands", () => {
-    const manifest = JSON.parse(fs.readFileSync("extension/manifest.json", "utf8"));
+  it("builds Chrome MV3 manifest with popup and side panel", () => {
+    const { chromeManifest: manifest } = buildOutputs();
 
     assert.equal(manifest.manifest_version, 3);
     assert.equal(manifest.default_locale, "en");
     assert.equal(manifest.name, "__MSG_extName__");
+    assert.equal(manifest.version, packageVersion);
     assert.equal(manifest.description, "__MSG_extDescription__");
     assert.deepEqual(manifest.icons, {
       "16": "icons/icon-16.png",
@@ -26,6 +55,7 @@ describe("manifest", () => {
     assert.deepEqual(manifest.host_permissions, ["https://steamcommunity.com/*"]);
     assert.equal(manifest.optional_host_permissions, undefined);
     assert.equal(manifest.content_security_policy.extension_pages, GOOGLE_FONTS_CSP);
+    assert.equal(manifest.minimum_chrome_version, "121");
     assert.equal(manifest.action.default_popup, "popup.html");
     assert.equal(manifest.action.default_title, "__MSG_actionDefaultTitle__");
     assert.deepEqual(manifest.action.default_icon, {
@@ -36,19 +66,23 @@ describe("manifest", () => {
     });
     assert.equal(manifest.side_panel.default_path, "sidebar.html");
     assert.equal(manifest.background.service_worker, "background.js");
+    assert.equal(manifest.background.type, "module");
     assert.equal(manifest.background.scripts, undefined);
+    assert.equal(manifest.sidebar_action, undefined);
+    assert.equal(manifest.content_scripts, undefined);
     assert.equal(manifest.commands._execute_action.description, "__MSG_commandOpenPopup__");
     assert.equal(manifest.commands["open-sidebar"].description, "__MSG_commandOpenSidebar__");
     assert.equal(manifest.commands._execute_action.suggested_key, undefined);
     assert.equal(manifest.commands["open-sidebar"].suggested_key, undefined);
   });
 
-  it("uses Firefox background scripts without Chrome sidePanel permission", () => {
-    const manifest = JSON.parse(fs.readFileSync("extension/manifest.firefox.json", "utf8"));
+  it("builds Firefox MV3 manifest with sidebar_action", () => {
+    const { firefoxManifest: manifest } = buildOutputs();
 
     assert.equal(manifest.manifest_version, 3);
     assert.equal(manifest.default_locale, "en");
     assert.equal(manifest.name, "__MSG_extName__");
+    assert.equal(manifest.version, packageVersion);
     assert.equal(manifest.description, "__MSG_extDescription__");
     assert.deepEqual(manifest.icons, {
       "16": "icons/icon-16.png",
@@ -81,6 +115,7 @@ describe("manifest", () => {
     });
     assert.equal(manifest.side_panel, undefined);
     assert.deepEqual(manifest.background.scripts, ["background.js"]);
+    assert.equal(manifest.background.type, "module");
     assert.equal(manifest.background.service_worker, undefined);
     assert.equal(manifest.commands._execute_action.suggested_key, undefined);
     assert.equal(manifest.commands["open-sidebar"].suggested_key, undefined);
@@ -94,30 +129,32 @@ describe("manifest", () => {
     });
   });
 
-  it("builds Chrome and Firefox extension outputs", () => {
-    execFileSync(process.execPath, ["scripts/build-extension.mjs"], { stdio: "pipe" });
+  it("emits required built files without static content_scripts", () => {
+    const { chromeManifest, firefoxManifest } = buildOutputs();
+    const expectedFiles = [
+      path.join(chromeOutputDir, "popup.html"),
+      path.join(chromeOutputDir, "sidebar.html"),
+      path.join(chromeOutputDir, "background.js"),
+      path.join(chromeOutputDir, "content-gcpd.js"),
+      path.join(chromeOutputDir, "icons", "icon-128.png"),
+      path.join(chromeOutputDir, "_locales", "en", "messages.json"),
+      path.join(chromeOutputDir, "_locales", "es", "messages.json"),
+      path.join(firefoxOutputDir, "popup.html"),
+      path.join(firefoxOutputDir, "sidebar.html"),
+      path.join(firefoxOutputDir, "background.js"),
+      path.join(firefoxOutputDir, "content-gcpd.js"),
+      path.join(firefoxOutputDir, "icons", "icon-128.png"),
+      path.join(firefoxOutputDir, "_locales", "en", "messages.json"),
+      path.join(firefoxOutputDir, "_locales", "es", "messages.json")
+    ];
 
-    const chromeManifest = JSON.parse(fs.readFileSync("dist/chrome/manifest.json", "utf8"));
-    const firefoxManifest = JSON.parse(fs.readFileSync("dist/firefox/manifest.json", "utf8"));
+    for (const file of expectedFiles) {
+      assert.equal(fs.existsSync(file), true, `Missing build file: ${file}`);
+    }
 
-    assert.equal(chromeManifest.background.service_worker, "background.js");
-    assert.equal(chromeManifest.content_security_policy.extension_pages, GOOGLE_FONTS_CSP);
-    assert.equal(chromeManifest.background.scripts, undefined);
-    assert.equal(chromeManifest.side_panel.default_path, "sidebar.html");
+    assert.equal(chromeManifest.content_scripts, undefined);
+    assert.equal(firefoxManifest.content_scripts, undefined);
+    assert.equal(path.basename(chromeManifest.background.service_worker), "background.js");
     assert.deepEqual(firefoxManifest.background.scripts, ["background.js"]);
-    assert.equal(firefoxManifest.content_security_policy.extension_pages, GOOGLE_FONTS_CSP);
-    assert.equal(firefoxManifest.background.service_worker, undefined);
-    assert.equal(firefoxManifest.sidebar_action.default_panel, "sidebar.html");
-    assert.deepEqual(firefoxManifest.browser_specific_settings.gecko.data_collection_permissions.required, ["none"]);
-    assert.equal(fs.existsSync("dist/chrome/popup.html"), true);
-    assert.equal(fs.existsSync("dist/chrome/sidebar.html"), true);
-    assert.equal(fs.existsSync("dist/chrome/icons/icon-128.png"), true);
-    assert.equal(fs.existsSync("dist/chrome/_locales/en/messages.json"), true);
-    assert.equal(fs.existsSync("dist/chrome/_locales/es/messages.json"), true);
-    assert.equal(fs.existsSync("dist/firefox/popup.html"), true);
-    assert.equal(fs.existsSync("dist/firefox/sidebar.html"), true);
-    assert.equal(fs.existsSync("dist/firefox/icons/icon-128.png"), true);
-    assert.equal(fs.existsSync("dist/firefox/_locales/en/messages.json"), true);
-    assert.equal(fs.existsSync("dist/firefox/_locales/es/messages.json"), true);
   });
 });

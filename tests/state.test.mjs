@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { DEFAULT_STATE, mergeState } from "../extension/lib/state.js";
+import { DEFAULT_STATE, mergeState } from "../src/lib/state.js";
 
 describe("state config", () => {
   it("enables badge counter by default", () => {
