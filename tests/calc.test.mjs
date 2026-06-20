@@ -52,7 +52,8 @@ describe("expiry calculation", () => {
 describe("formatting and badge", () => {
   it("formats small durations for badges", () => {
     assert.equal(formatDuration(59 * 60 * 1000), "59m");
-    assert.equal(formatDuration(2 * 60 * 60 * 1000), "2h");
+    assert.equal(formatDuration(23 * 60 * 60 * 1000), "23h");
+    assert.equal(formatDuration(24 * 60 * 60 * 1000), "1d");
     assert.equal(formatDuration(3 * 24 * 60 * 60 * 1000), "3d");
   });
 

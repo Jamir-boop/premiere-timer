@@ -130,7 +130,7 @@ export function formatDuration(ms) {
   }
 
   const hours = Math.ceil(minutes / 60);
-  if (hours < 48) {
+  if (hours < 24) {
     return `${hours}h`;
   }
 
