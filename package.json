@@ -1,18 +1,16 @@
 {
   "name": "premiere-timer",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm run build:chrome && pnpm run build:firefox",
-    "build:chrome": "wxt build --browser chrome",
+    "build": "wxt build && wxt build --browser firefox",
     "build:firefox": "wxt build --browser firefox",
     "dev": "wxt",
     "dev:firefox": "wxt --browser firefox",
     "postinstall": "wxt prepare",
     "test": "node --test tests/*.test.mjs",
-    "zip": "pnpm run zip:chrome && pnpm run zip:firefox",
-    "zip:chrome": "wxt zip --browser chrome",
+    "zip": "wxt zip && wxt zip --browser firefox",
     "zip:firefox": "wxt zip --browser firefox"
   },
   "devDependencies": {

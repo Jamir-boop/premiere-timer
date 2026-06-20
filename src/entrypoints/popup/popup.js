@@ -1,12 +1,5 @@
 import { formatDuration, getPremierRankInfo, getTimerState } from "../../lib/calc.js";
-import {
-  ext,
-  hasApiPermission,
-  hasPermission,
-  requestApiPermission,
-  requestPermission,
-  sendMessage
-} from "../../lib/ext-api.js";
+import { ext, sendMessage } from "../../lib/ext-api.js";
 import {
   createTranslator,
   getBrowserLanguageCandidates,
@@ -80,7 +73,7 @@ function bindEvents() {
     const action = primaryActionForState(state, hasSteamAccess);
     await runAction(action.busyLabel, async () => {
       if (action.type === "permission") {
-        const allowed = await requestPermission(STEAM_ORIGIN);
+        const allowed = await ext.permissions.request({ origins: [STEAM_ORIGIN] });
         hasSteamAccess = allowed;
         setMessage(allowed ? t("steamAccessAllowedNext") : t("steamAccessDenied"));
         return;
@@ -182,7 +175,7 @@ function bindEvents() {
 async function reloadState() {
   [state, hasSteamAccess] = await Promise.all([
     sendMessage("getState"),
-    hasPermission(STEAM_ORIGIN).catch(() => false)
+    ext.permissions.contains({ origins: [STEAM_ORIGIN] }).catch(() => false)
   ]);
   render();
 }
@@ -356,13 +349,13 @@ async function getRequestedRemindersEnabled(shouldRequestPermission) {
     return { enabled: false, denied: false };
   }
 
-  const hasNotifications = await hasApiPermission(NOTIFICATIONS_PERMISSION).catch(() => false);
+  const hasNotifications = await ext.permissions.contains({ permissions: [NOTIFICATIONS_PERMISSION] }).catch(() => false);
   if (hasNotifications) {
     return { enabled: true, denied: false };
   }
 
   const allowed = shouldRequestPermission
-    ? await requestApiPermission(NOTIFICATIONS_PERMISSION).catch(() => false)
+    ? await ext.permissions.request({ permissions: [NOTIFICATIONS_PERMISSION] }).catch(() => false)
     : false;
   if (allowed) {
     return { enabled: true, denied: false };

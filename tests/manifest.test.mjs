@@ -10,6 +10,20 @@ const outputDir = ".output";
 const chromeOutputDir = path.join(outputDir, "chrome-mv3");
 const firefoxOutputDir = path.join(outputDir, "firefox-mv3");
 const packageVersion = JSON.parse(fs.readFileSync("package.json", "utf8")).version;
+const ICONS = {
+  "16": "icons/icon-16.png",
+  "32": "icons/icon-32.png",
+  "48": "icons/icon-48.png",
+  "64": "icons/icon-64.png",
+  "96": "icons/icon-96.png",
+  "128": "icons/icon-128.png"
+};
+const ACTION_ICONS = {
+  "16": "icons/icon-16.png",
+  "32": "icons/icon-32.png",
+  "48": "icons/icon-48.png",
+  "128": "icons/icon-128.png"
+};
 
 let builtOutputs = null;
 
@@ -33,92 +47,54 @@ after(() => {
   fs.rmSync(outputDir, { recursive: true, force: true });
 });
 
+function assertCommonManifest(manifest) {
+  assert.equal(manifest.manifest_version, 3);
+  assert.equal(manifest.default_locale, "en");
+  assert.equal(manifest.name, "__MSG_extName__");
+  assert.equal(manifest.version, packageVersion);
+  assert.equal(manifest.description, "__MSG_extDescription__");
+  assert.deepEqual(manifest.icons, ICONS);
+  assert.deepEqual(manifest.optional_permissions, ["notifications"]);
+  assert.deepEqual(manifest.host_permissions, ["https://steamcommunity.com/*"]);
+  assert.equal(manifest.content_security_policy.extension_pages, GOOGLE_FONTS_CSP);
+  assert.equal(manifest.action.default_popup, "popup.html");
+  assert.equal(manifest.action.default_title, "__MSG_actionDefaultTitle__");
+  assert.deepEqual(manifest.action.default_icon, ACTION_ICONS);
+  assert.equal(manifest.content_scripts, undefined);
+  assert.equal(manifest.commands._execute_action.description, "__MSG_commandOpenPopup__");
+  assert.equal(manifest.commands["open-sidebar"].description, "__MSG_commandOpenSidebar__");
+  assert.equal(manifest.commands._execute_action.suggested_key, undefined);
+  assert.equal(manifest.commands["open-sidebar"].suggested_key, undefined);
+}
+
 describe("manifest", () => {
   it("builds Chrome MV3 manifest with popup and side panel", () => {
     const { chromeManifest: manifest } = buildOutputs();
 
-    assert.equal(manifest.manifest_version, 3);
-    assert.equal(manifest.default_locale, "en");
-    assert.equal(manifest.name, "__MSG_extName__");
-    assert.equal(manifest.version, packageVersion);
-    assert.equal(manifest.description, "__MSG_extDescription__");
-    assert.deepEqual(manifest.icons, {
-      "16": "icons/icon-16.png",
-      "32": "icons/icon-32.png",
-      "48": "icons/icon-48.png",
-      "64": "icons/icon-64.png",
-      "96": "icons/icon-96.png",
-      "128": "icons/icon-128.png"
-    });
+    assertCommonManifest(manifest);
     assert.deepEqual(manifest.permissions.sort(), ["activeTab", "alarms", "scripting", "sidePanel", "storage"]);
-    assert.deepEqual(manifest.optional_permissions, ["notifications"]);
-    assert.deepEqual(manifest.host_permissions, ["https://steamcommunity.com/*"]);
     assert.equal(manifest.optional_host_permissions, undefined);
-    assert.equal(manifest.content_security_policy.extension_pages, GOOGLE_FONTS_CSP);
     assert.equal(manifest.minimum_chrome_version, "121");
-    assert.equal(manifest.action.default_popup, "popup.html");
-    assert.equal(manifest.action.default_title, "__MSG_actionDefaultTitle__");
-    assert.deepEqual(manifest.action.default_icon, {
-      "16": "icons/icon-16.png",
-      "32": "icons/icon-32.png",
-      "48": "icons/icon-48.png",
-      "128": "icons/icon-128.png"
-    });
-    assert.equal(manifest.side_panel.default_path, "sidebar.html");
+    assert.equal(manifest.side_panel.default_path, "popup.html");
     assert.equal(manifest.background.service_worker, "background.js");
     assert.equal(manifest.background.type, "module");
     assert.equal(manifest.background.scripts, undefined);
     assert.equal(manifest.sidebar_action, undefined);
-    assert.equal(manifest.content_scripts, undefined);
-    assert.equal(manifest.commands._execute_action.description, "__MSG_commandOpenPopup__");
-    assert.equal(manifest.commands["open-sidebar"].description, "__MSG_commandOpenSidebar__");
-    assert.equal(manifest.commands._execute_action.suggested_key, undefined);
-    assert.equal(manifest.commands["open-sidebar"].suggested_key, undefined);
   });
 
   it("builds Firefox MV3 manifest with sidebar_action", () => {
     const { firefoxManifest: manifest } = buildOutputs();
 
-    assert.equal(manifest.manifest_version, 3);
-    assert.equal(manifest.default_locale, "en");
-    assert.equal(manifest.name, "__MSG_extName__");
-    assert.equal(manifest.version, packageVersion);
-    assert.equal(manifest.description, "__MSG_extDescription__");
-    assert.deepEqual(manifest.icons, {
-      "16": "icons/icon-16.png",
-      "32": "icons/icon-32.png",
-      "48": "icons/icon-48.png",
-      "64": "icons/icon-64.png",
-      "96": "icons/icon-96.png",
-      "128": "icons/icon-128.png"
-    });
+    assertCommonManifest(manifest);
     assert.deepEqual(manifest.permissions.sort(), ["activeTab", "alarms", "scripting", "storage"]);
-    assert.deepEqual(manifest.optional_permissions, ["notifications"]);
-    assert.deepEqual(manifest.host_permissions, ["https://steamcommunity.com/*"]);
-    assert.equal(manifest.content_security_policy.extension_pages, GOOGLE_FONTS_CSP);
     assert.equal(manifest.permissions.includes("sidePanel"), false);
-    assert.equal(manifest.action.default_popup, "popup.html");
-    assert.equal(manifest.action.default_title, "__MSG_actionDefaultTitle__");
-    assert.deepEqual(manifest.action.default_icon, {
-      "16": "icons/icon-16.png",
-      "32": "icons/icon-32.png",
-      "48": "icons/icon-48.png",
-      "128": "icons/icon-128.png"
-    });
-    assert.equal(manifest.sidebar_action.default_panel, "sidebar.html");
+    assert.equal(manifest.sidebar_action.default_panel, "popup.html");
     assert.equal(manifest.sidebar_action.default_title, "__MSG_actionDefaultTitle__");
-    assert.deepEqual(manifest.sidebar_action.default_icon, {
-      "16": "icons/icon-16.png",
-      "32": "icons/icon-32.png",
-      "48": "icons/icon-48.png",
-      "128": "icons/icon-128.png"
-    });
+    assert.deepEqual(manifest.sidebar_action.default_icon, ACTION_ICONS);
     assert.equal(manifest.side_panel, undefined);
     assert.deepEqual(manifest.background.scripts, ["background.js"]);
     assert.equal(manifest.background.type, "module");
     assert.equal(manifest.background.service_worker, undefined);
-    assert.equal(manifest.commands._execute_action.suggested_key, undefined);
-    assert.equal(manifest.commands["open-sidebar"].suggested_key, undefined);
     assert.deepEqual(manifest.browser_specific_settings, {
       gecko: {
         id: "premiere-reminder@superuser.example.com",
@@ -133,14 +109,12 @@ describe("manifest", () => {
     const { chromeManifest, firefoxManifest } = buildOutputs();
     const expectedFiles = [
       path.join(chromeOutputDir, "popup.html"),
-      path.join(chromeOutputDir, "sidebar.html"),
       path.join(chromeOutputDir, "background.js"),
       path.join(chromeOutputDir, "content-gcpd.js"),
       path.join(chromeOutputDir, "icons", "icon-128.png"),
       path.join(chromeOutputDir, "_locales", "en", "messages.json"),
       path.join(chromeOutputDir, "_locales", "es", "messages.json"),
       path.join(firefoxOutputDir, "popup.html"),
-      path.join(firefoxOutputDir, "sidebar.html"),
       path.join(firefoxOutputDir, "background.js"),
       path.join(firefoxOutputDir, "content-gcpd.js"),
       path.join(firefoxOutputDir, "icons", "icon-128.png"),
@@ -152,8 +126,6 @@ describe("manifest", () => {
       assert.equal(fs.existsSync(file), true, `Missing build file: ${file}`);
     }
 
-    assert.equal(chromeManifest.content_scripts, undefined);
-    assert.equal(firefoxManifest.content_scripts, undefined);
     assert.equal(path.basename(chromeManifest.background.service_worker), "background.js");
     assert.deepEqual(firefoxManifest.background.scripts, ["background.js"]);
   });

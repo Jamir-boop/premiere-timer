@@ -40,7 +40,6 @@ describe("i18n", () => {
   it("defines keys referenced by UI markup and controller", () => {
     const files = [
       "src/entrypoints/popup/index.html",
-      "src/entrypoints/sidebar.sidepanel/index.html",
       "src/entrypoints/popup/popup.js",
       "src/entrypoints/background.js",
       "src/background.js"

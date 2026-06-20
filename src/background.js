@@ -1,5 +1,5 @@
 import { getBadgeInfo, getTimerState, normalizeRating } from "./lib/calc.js";
-import { ext, getStorage, hasApiPermission, hasPermission, setStorage } from "./lib/ext-api.js";
+import { ext } from "./lib/ext-api.js";
 import { badgeTitle, createTranslator, getBrowserLanguageCandidates, normalizeLanguagePreference } from "./lib/i18n.js";
 import {
   extractSteamGcpdLoadMoreState,
@@ -41,12 +41,12 @@ const guidedTabs = new Map();
 let backgroundStarted = false;
 
 async function loadState() {
-  return getStorage(DEFAULT_STATE);
+  return ext.storage.local.get(DEFAULT_STATE);
 }
 
 async function saveState(state) {
   const next = await applyReminderSchedule(state);
-  await setStorage(next);
+  await ext.storage.local.set(next);
   await updateBadge(next);
   return next;
 }
@@ -79,7 +79,7 @@ async function applyReminderSchedule(state, now = new Date()) {
     return state;
   }
 
-  if (!ext.notifications?.create || !await hasApiPermission(NOTIFICATIONS_PERMISSION).catch(() => false)) {
+  if (!ext.notifications?.create || !await ext.permissions.contains({ permissions: [NOTIFICATIONS_PERMISSION] }).catch(() => false)) {
     return { ...state, remindersEnabled: false };
   }
 
@@ -107,7 +107,7 @@ async function applyReminderScheduleFromStorage() {
   const state = await loadState();
   const next = await applyReminderSchedule(state);
   if (next !== state) {
-    await setStorage(next);
+    await ext.storage.local.set(next);
   }
   await updateBadge(next);
 }
@@ -216,7 +216,7 @@ async function ensureAlarm() {
 }
 
 async function ensureContentScriptRegistration() {
-  if (!await hasPermission(STEAM_ORIGIN)) {
+  if (!await ext.permissions.contains({ origins: [STEAM_ORIGIN] })) {
     return false;
   }
 
@@ -271,7 +271,7 @@ export async function refreshFromSteam(options = {}) {
   let state = await loadState();
   const now = new Date();
 
-  if (!await hasPermission(STEAM_ORIGIN)) {
+  if (!await ext.permissions.contains({ origins: [STEAM_ORIGIN] })) {
     return saveState(applyPatch(state, {
       lastFetchAt: now.toISOString(),
       lastFetchStatus: "no_permission",

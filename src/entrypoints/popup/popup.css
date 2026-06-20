@@ -477,3 +477,34 @@ dl div {
 .expired {
   background: var(--accent) !important;
 }
+
+@media (min-width: 391px), (min-height: 650px) {
+  body {
+    min-width: 300px;
+    max-width: none;
+  }
+
+  main {
+    gap: 14px;
+    padding: 18px;
+  }
+
+  #countdown {
+    font-size: 38px;
+  }
+
+  .onboarding,
+  .timer,
+  .panel {
+    padding: 14px;
+  }
+
+  .facts div {
+    min-height: 60px;
+    padding: 11px 13px;
+  }
+
+  .secondary {
+    gap: 10px;
+  }
+}

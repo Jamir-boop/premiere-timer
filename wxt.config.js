@@ -43,6 +43,23 @@ export default defineConfig({
     minimum_chrome_version: browser === "chrome" ? "121" : undefined,
     name: "__MSG_extName__",
     optional_permissions: ["notifications"],
+    side_panel: browser === "chrome"
+      ? {
+          default_path: "popup.html"
+        }
+      : undefined,
+    sidebar_action: browser === "firefox"
+      ? {
+          default_panel: "popup.html",
+          default_title: "__MSG_actionDefaultTitle__",
+          default_icon: {
+            16: ICONS[16],
+            32: ICONS[32],
+            48: ICONS[48],
+            128: ICONS[128]
+          }
+        }
+      : undefined,
     permissions: browser === "chrome"
       ? ["activeTab", "alarms", "scripting", "storage", "sidePanel"]
       : ["activeTab", "alarms", "scripting", "storage"]
