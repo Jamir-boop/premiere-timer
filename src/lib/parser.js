@@ -171,7 +171,6 @@ export function extractDateCandidates(text, now = new Date()) {
   collectSteamTimestampDates(normalized, now, candidates);
   collectDayMonthDates(normalized, now, candidates);
   collectMonthDayDates(normalized, now, candidates);
-  collectNumericDates(normalized, now, candidates);
 
   return dedupeDates(candidates);
 }
@@ -209,31 +208,6 @@ function collectMonthDayDates(text, now, candidates) {
       day: match[2],
       monthIndex: monthIndex(match[1]),
       year: match[3],
-      hour: match[4],
-      minute: match[5],
-      second: match[6],
-      ampm: match[7],
-      zone: match[8],
-      now
-    });
-    if (date) {
-      candidates.push(date);
-    }
-  }
-}
-
-function collectNumericDates(text, now, candidates) {
-  const re = /\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s*,?\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?\s*(GMT|UTC|Z|[+-]\d{2}:?\d{2})?\b/gi;
-  for (const match of text.matchAll(re)) {
-    let year = Number.parseInt(match[3], 10);
-    if (year < 100) {
-      year += 2000;
-    }
-
-    const date = buildDate({
-      day: match[2],
-      monthIndex: Number.parseInt(match[1], 10) - 1,
-      year: String(year),
       hour: match[4],
       minute: match[5],
       second: match[6],
