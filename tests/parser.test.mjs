@@ -230,6 +230,28 @@ describe("Steam GCPD parser", () => {
     assert.equal(result.premierWins, null);
   });
 
+  it("parses Steam's unclosed <td> markup in the matchmaking table", () => {
+    // Verbatim structure from a real GCPD page: Steam does not close <td> tags.
+    const html = `
+      <table class=generic_kv_table><tbody><tr>
+        <th>Matchmaking Mode</th>
+        <th>Wins</th>
+        <th>Ties</th>
+        <th>Losses</th>
+        <th>Skill Group</th>
+        <th>Last Match</th>
+        <th>Region</th>
+      </tr>
+      <tr>
+        <td>Premier<td>123<td>2<td>24<td>26,269<td>2026-05-28 03:50:25 GMT<td>2</td> </tr>
+      </table>
+    `;
+    const result = parseSteamGcpdMatchmakingRating(html);
+
+    assert.equal(result.status, "ok");
+    assert.equal(result.currentRating, 26269);
+  });
+
   it("reports unranked with placement wins for off-season blank Skill Group", () => {
     // Trimmed from a real GCPD matchmaking page saved during the S4->S5 off-season.
     const html = `

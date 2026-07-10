@@ -395,7 +395,8 @@ function parseWinsValue(value) {
 function extractTableRows(html) {
   const rows = [];
   const rowRe = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
-  const cellRe = /<(?:th|td)\b[^>]*>([\s\S]*?)<\/(?:th|td)>/gi;
+  // Steam omits closing </td> tags, so cells end at the next cell opening, a closing tag, or end of row.
+  const cellRe = /<(?:th|td)\b[^>]*>([\s\S]*?)(?=<t[dh]\b|<\/t[dh]>|$)/gi;
 
   for (const rowMatch of html.matchAll(rowRe)) {
     const cells = [...rowMatch[1].matchAll(cellRe)].map((cellMatch) => htmlToText(cellMatch[1]));
