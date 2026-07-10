@@ -124,18 +124,13 @@ export function formatDuration(ms) {
     return "expired";
   }
 
-  const minutes = Math.ceil(ms / (60 * 1000));
-  if (minutes < 60) {
-    return `${minutes}m`;
+  if (ms < 60 * 60 * 1000) {
+    return `${Math.ceil(ms / (60 * 1000))}m`;
   }
-
-  const hours = Math.ceil(minutes / 60);
-  if (hours < 24) {
-    return `${hours}h`;
+  if (ms < 24 * 60 * 60 * 1000) {
+    return `${Math.ceil(ms / (60 * 60 * 1000))}h`;
   }
-
-  const days = Math.ceil(hours / 24);
-  return `${days}d`;
+  return `${Math.ceil(ms / (24 * 60 * 60 * 1000))}d`;
 }
 
 export function getBadgeInfo(state, now = new Date()) {

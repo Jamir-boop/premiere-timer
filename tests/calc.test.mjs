@@ -57,6 +57,12 @@ describe("formatting and badge", () => {
     assert.equal(formatDuration(3 * 24 * 60 * 60 * 1000), "3d");
   });
 
+  it("never rounds a sub-24h duration up to days", () => {
+    assert.equal(formatDuration((23 * 60 + 6) * 60 * 1000), "24h");
+    assert.equal(formatDuration((23 * 60 + 59) * 60 * 1000), "24h");
+    assert.equal(formatDuration((24 * 60 + 1) * 60 * 1000), "2d");
+  });
+
   it("shows RATE when latest match needs rating update", () => {
     const badge = getBadgeInfo({
       latestPremierMatchAt: "2026-05-01T00:00:00.000Z",
