@@ -113,6 +113,20 @@ describe("Steam GCPD parser", () => {
     assert.equal(dates[0].toISOString(), "2026-05-28T03:50:25.000Z");
   });
 
+  it("does not duplicate a GMT timestamp as a local-time candidate", () => {
+    const dates = extractDateCandidates("2026-05-28 03:50:25 GMT");
+
+    assert.equal(dates.length, 1);
+    assert.equal(dates[0].toISOString(), "2026-05-28T03:50:25.000Z");
+  });
+
+  it("parses zoneless ISO timestamp as local time", () => {
+    const dates = extractDateCandidates("2026-05-28 03:50:25", new Date("2026-05-29T00:00:00.000Z"));
+
+    assert.equal(dates.length, 1);
+    assert.equal(dates[0].toISOString(), new Date(2026, 4, 28, 3, 50, 25).toISOString());
+  });
+
   it("parses month-name GMT date as UTC", () => {
     const dates = extractDateCandidates(
       "May 28, 2026 @ 03:50:25 GMT",

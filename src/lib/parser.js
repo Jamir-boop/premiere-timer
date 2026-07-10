@@ -168,11 +168,10 @@ export function extractDateCandidates(text, now = new Date()) {
   const candidates = [];
   const normalized = text.replace(/\s+/g, " ");
 
-  collectSteamTimestampDates(normalized, candidates);
+  collectSteamTimestampDates(normalized, now, candidates);
   collectDayMonthDates(normalized, now, candidates);
   collectMonthDayDates(normalized, now, candidates);
   collectNumericDates(normalized, now, candidates);
-  collectIsoDates(normalized, candidates);
 
   return dedupeDates(candidates);
 }
@@ -248,8 +247,8 @@ function collectNumericDates(text, now, candidates) {
   }
 }
 
-function collectSteamTimestampDates(text, candidates) {
-  const re = /\b(\d{4})-(\d{2})-(\d{2})[T ](\d{1,2}):(\d{2})(?::(\d{2}))?\s*(GMT|UTC|Z|[+-]\d{2}:?\d{2})\b/gi;
+function collectSteamTimestampDates(text, now, candidates) {
+  const re = /\b(\d{4})-(\d{2})-(\d{2})[T ](\d{1,2}):(\d{2})(?::(\d{2}))?\s*(GMT|UTC|Z|[+-]\d{2}:?\d{2})?\b/gi;
   for (const match of text.matchAll(re)) {
     const date = buildDate({
       day: match[3],
@@ -259,19 +258,9 @@ function collectSteamTimestampDates(text, candidates) {
       minute: match[5],
       second: match[6],
       zone: match[7],
-      now: new Date()
+      now
     });
     if (date) {
-      candidates.push(date);
-    }
-  }
-}
-
-function collectIsoDates(text, candidates) {
-  const re = /\b(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2})?(?:\.\d{3})?(?:Z|[+-]\d{2}:?\d{2})?)\b/g;
-  for (const match of text.matchAll(re)) {
-    const date = new Date(match[1]);
-    if (!Number.isNaN(date.getTime())) {
       candidates.push(date);
     }
   }
