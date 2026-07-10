@@ -4,7 +4,6 @@ import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-const GOOGLE_FONTS_CSP = "script-src 'self'; object-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;";
 const wxtCli = path.join(process.cwd(), "node_modules", "wxt", "bin", "wxt.mjs");
 const outputDir = ".output";
 const chromeOutputDir = path.join(outputDir, "chrome-mv3");
@@ -56,7 +55,7 @@ function assertCommonManifest(manifest) {
   assert.deepEqual(manifest.icons, ICONS);
   assert.deepEqual(manifest.optional_permissions, ["notifications"]);
   assert.deepEqual(manifest.host_permissions, ["https://steamcommunity.com/*"]);
-  assert.equal(manifest.content_security_policy.extension_pages, GOOGLE_FONTS_CSP);
+  assert.equal(manifest.content_security_policy, undefined);
   assert.equal(manifest.action.default_popup, "popup.html");
   assert.equal(manifest.action.default_title, "__MSG_actionDefaultTitle__");
   assert.deepEqual(manifest.action.default_icon, ACTION_ICONS);

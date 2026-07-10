@@ -1,8 +1,5 @@
 import { defineConfig } from "wxt";
 
-const GOOGLE_FONTS_CSP =
-  "script-src 'self'; object-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com;";
-
 const ICONS = {
   16: "icons/icon-16.png",
   32: "icons/icon-32.png",
@@ -32,9 +29,6 @@ export default defineConfig({
       "open-sidebar": {
         description: "__MSG_commandOpenSidebar__"
       }
-    },
-    content_security_policy: {
-      extension_pages: GOOGLE_FONTS_CSP
     },
     default_locale: "en",
     description: "__MSG_extDescription__",

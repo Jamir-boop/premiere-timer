@@ -16,7 +16,7 @@
   --border-strong: #664A00;
   --rank-color: #C7D0D9;
   --rank-bg: url("/assets/ratings/rating.common.png");
-  --display-font: "Roboto", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --display-font: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --rank-font: var(--display-font);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: var(--bg);
