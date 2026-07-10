@@ -6,3 +6,4 @@ dist/
 .output/
 /assets/
 *.zip
+.pnpm-store/

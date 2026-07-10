@@ -695,16 +695,26 @@ function normalizeHexColor(value, label) {
 
 async function openGcpdTabs() {
   await ensureContentScriptRegistration();
-  const matchTab = await ext.tabs.create({ url: GCPD_MATCH_URL });
-  const ratingTab = await ext.tabs.create({ url: GCPD_MATCHMAKING_URL, active: false });
 
+  const tabPromises = [];
+
+  const matchTab = await ext.tabs.create({ url: GCPD_MATCH_URL, active: false });
   if (matchTab?.id) {
-    guidedTabs.set(matchTab.id, { pageType: "match_history", parsing: false });
-  }
-  if (ratingTab?.id) {
-    guidedTabs.set(ratingTab.id, { pageType: "matchmaking", parsing: false });
+    let resolve;
+    const promise = new Promise((r) => { resolve = r; });
+    guidedTabs.set(matchTab.id, { pageType: "match_history", parsing: false, resolve });
+    tabPromises.push(promise);
   }
 
+  const ratingTab = await ext.tabs.create({ url: GCPD_MATCHMAKING_URL, active: false });
+  if (ratingTab?.id) {
+    let resolve;
+    const promise = new Promise((r) => { resolve = r; });
+    guidedTabs.set(ratingTab.id, { pageType: "matchmaking", parsing: false, resolve });
+    tabPromises.push(promise);
+  }
+
+  await Promise.all(tabPromises);
   return loadState();
 }
 
@@ -731,7 +741,7 @@ async function parseGuidedTab(tabId, fallbackType) {
   return result.pageUpdated;
 }
 
-async function handleMessage(message) {
+export async function handleMessage(message) {
   switch (message?.type) {
     case "getState":
       await updateBadge();
@@ -810,6 +820,7 @@ export function startBackground() {
     guided.parsing = true;
     parseGuidedTab(tabId, guided.pageType)
       .then(async (success) => {
+        guided.resolve?.();
         if (success) {
           guidedTabs.delete(tabId);
           await ext.tabs.remove(tabId).catch(() => {});
@@ -818,11 +829,14 @@ export function startBackground() {
         }
       })
       .catch(() => {
+        guided.resolve?.();
         guided.parsing = false;
       });
   });
 
   ext.tabs?.onRemoved?.addListener((tabId) => {
+    const guided = guidedTabs.get(tabId);
+    guided?.resolve?.();
     guidedTabs.delete(tabId);
   });
 

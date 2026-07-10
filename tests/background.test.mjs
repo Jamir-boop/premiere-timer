@@ -4,6 +4,9 @@ import assert from "node:assert/strict";
 let storageData = {};
 let fetchMock = null;
 let fetchCalls = [];
+let tabIdCounter = 1;
+let onUpdatedListeners = [];
+let onRemovedListeners = [];
 
 globalThis.browser = {
   action: {
@@ -47,8 +50,8 @@ globalThis.browser = {
   },
   tabs: {
     create: async () => ({}),
-    onRemoved: { addListener: () => {} },
-    onUpdated: { addListener: () => {} },
+    onRemoved: { addListener: (fn) => onRemovedListeners.push(fn) },
+    onUpdated: { addListener: (fn) => onUpdatedListeners.push(fn) },
     query: async () => [],
     remove: async () => {}
   },
@@ -65,9 +68,13 @@ globalThis.fetch = async (url) => {
 
 const {
   fetchAndParseMatchHistory,
+  handleMessage,
   parseMatchHistoryWithLoadMore,
-  refreshFromSteam
+  refreshFromSteam,
+  startBackground
 } = await import("../src/background.js");
+
+startBackground();
 
 const MATCH_URL = "https://steamcommunity.com/my/gcpd/730/?tab=matchhistorypremier&l=english";
 const RATING_HTML = "<div>Premier Skill Group 14,250</div>";
@@ -77,6 +84,7 @@ beforeEach(() => {
   storageData = {};
   fetchCalls = [];
   fetchMock = () => htmlResponse("<html></html>");
+  tabIdCounter = 1;
 });
 
 describe("Steam background history scan", () => {
@@ -226,6 +234,46 @@ describe("Steam background history scan", () => {
     const result = await fetchAndParseMatchHistory(NOW, { loadMoreDelayMs: 0 });
 
     assert.equal(result.status, "rate_limited");
+  });
+});
+
+describe("openGcpd guided tabs", () => {
+  it("waits for guided tabs to parse before returning state", async () => {
+    const createdTabs = [];
+    const originalCreate = globalThis.browser.tabs.create;
+    const originalExecuteScript = globalThis.browser.scripting.executeScript;
+
+    globalThis.browser.tabs.create = async (opts) => {
+      const tab = { id: tabIdCounter++, url: opts.url, active: opts.active };
+      createdTabs.push(tab);
+      return tab;
+    };
+
+    globalThis.browser.scripting.executeScript = async () => [{
+      result: {
+        url: MATCH_URL,
+        html: "<html><table><tr><td>Jun 8, 2026 @ 7:11pm GMT</td><td>Mirage</td></tr></table></html>"
+      }
+    }];
+
+    const p = handleMessage({ type: "openGcpd" });
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    for (const tab of createdTabs) {
+      for (const listener of onUpdatedListeners) {
+        listener(tab.id, { status: "complete" });
+      }
+    }
+
+    const state = await p;
+
+    assert.ok(state, "openGcpd should return state");
+    assert.equal(createdTabs.length, 2, "should create 2 tabs");
+    assert.ok(createdTabs.every((t) => t.active === false), "both tabs should open inactive");
+
+    globalThis.browser.tabs.create = originalCreate;
+    globalThis.browser.scripting.executeScript = originalExecuteScript;
   });
 });
 
