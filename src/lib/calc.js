@@ -145,15 +145,9 @@ export function getBadgeInfo(state, now = new Date()) {
     return { text: "EXP", color: "#FFB900", title: "Past safe play window" };
   }
 
-  const text = formatDuration(timer.expiry.msUntilPlayBefore).slice(0, 4);
-  const colors = {
-    ok: "#FFB900",
-    warning: "#FFB900",
-    urgent: "#FFB900"
-  };
   return {
-    text,
-    color: colors[timer.level] ?? "#555555",
+    text: formatDuration(timer.expiry.msUntilPlayBefore).slice(0, 4),
+    color: "#FFB900",
     title: timer.label
   };
 }

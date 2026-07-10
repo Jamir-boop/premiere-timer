@@ -3,7 +3,6 @@ import { LANGUAGE_AUTO } from "./i18n.js";
 
 export const GCPD_MATCH_URL = "https://steamcommunity.com/my/gcpd/730/?tab=matchhistorypremier&l=english";
 export const GCPD_MATCHMAKING_URL = "https://steamcommunity.com/my/gcpd/730/?tab=matchmaking&l=english";
-export const GCPD_URL = GCPD_MATCH_URL;
 export const STEAM_ORIGIN = "https://steamcommunity.com/*";
 export const REFRESH_ALARM = "steam-gcpd-refresh";
 export const REFRESH_PERIOD_MINUTES = 360;

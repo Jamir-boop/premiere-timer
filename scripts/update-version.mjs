@@ -7,11 +7,8 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const pkgPath = join(root, 'package.json');
-const popupPath = join(root, 'src', 'entrypoints', 'popup', 'popup.js');
 
 const SEMVER_RE = /^\d+\.\d+\.\d+$/;
-const FALLBACK_VERSION_RE =
-	/(getManifest\?\.\(\)\.version\s*\|\|\s*")([^"]+)(")/;
 
 function relativePath(path) {
 	return relative(root, path).replaceAll('\\', '/');
@@ -30,20 +27,6 @@ async function collectWrites(newVersion) {
 			path: pkgPath,
 			content: `${JSON.stringify(pkg, null, 2)}\n`,
 			from: currentVersion,
-		});
-	}
-
-	const popupContent = await readFile(popupPath, 'utf8');
-	const match = popupContent.match(FALLBACK_VERSION_RE);
-	if (match && match[2] !== newVersion) {
-		const popupNext = popupContent.replace(
-			FALLBACK_VERSION_RE,
-			`$1${newVersion}$3`
-		);
-		writes.push({
-			path: popupPath,
-			content: popupNext,
-			from: match[2],
 		});
 	}
 

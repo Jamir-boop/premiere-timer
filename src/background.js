@@ -748,8 +748,6 @@ export async function handleMessage(message) {
       return loadState();
     case "refresh":
       return refreshFromSteam();
-    case "parseHtml":
-      return (await parseProvidedHtml(message.html, message.source, message.url)).state;
     case "steamGcpdPageHtml":
       return parseProvidedHtml(message.html, message.source, message.url);
     case "saveRating":

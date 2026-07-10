@@ -23,7 +23,6 @@ const elements = {
   timezoneValue: document.querySelector("#timezoneValue"),
   primaryAction: document.querySelector("#primaryAction"),
   accessStatus: document.querySelector("#accessStatus"),
-  secondaryButtons: document.querySelector(".secondary-buttons"),
   moreDataToggle: document.querySelector("#moreDataToggle"),
   manualToggle: document.querySelector("#manualToggle"),
   settingsToggle: document.querySelector("#settingsToggle"),
@@ -228,7 +227,6 @@ function render() {
   elements.primaryAction.textContent = action.label;
   elements.primaryAction.disabled = action.disabled;
   elements.accessStatus.textContent = hasSteamAccess ? t("steamAccessAllowed") : t("steamAccessPending");
-  elements.secondaryButtons.hidden = false;
   elements.moreDataToggle.hidden = !hasSteamAccess;
   elements.manualToggle.hidden = !hasSteamAccess;
   elements.ratingSourceValue.textContent = ratingSourceLabel(state);
