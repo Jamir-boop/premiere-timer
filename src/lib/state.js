@@ -20,6 +20,7 @@ export const DEFAULT_STATE = {
   ratingSource: null,
   ratingUpdatedAt: null,
   ratingNeedsUpdate: false,
+  premierWins: null,
   latestPremierMatchAt: null,
   latestPremierMatchSource: null,
   lastFetchAt: null,
@@ -68,7 +69,8 @@ export function applyRating(state, rating, source = "manual", now = new Date()) 
       currentRating: rating,
       ratingSource: source,
       ratingUpdatedAt: now.toISOString(),
-      ratingNeedsUpdate: false
+      ratingNeedsUpdate: false,
+      premierWins: null
     },
     now
   );

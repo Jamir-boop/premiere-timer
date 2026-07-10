@@ -217,7 +217,7 @@ describe("Steam GCPD parser", () => {
     assert.equal(result.currentRating, null);
   });
 
-  it("returns rating_not_found when matchmaking table has invalid Premier Skill Group", () => {
+  it("returns unranked when Premier row has an invalid Skill Group value", () => {
     const html = `
       <tr><th>Matchmaking Mode</th><th>Skill Group</th></tr>
       <tr><td>Premier</td><td>12</td></tr>
@@ -225,8 +225,28 @@ describe("Steam GCPD parser", () => {
     `;
     const result = parseSteamGcpdMatchmakingRating(html);
 
-    assert.equal(result.status, "rating_not_found");
+    assert.equal(result.status, "unranked");
     assert.equal(result.currentRating, null);
+    assert.equal(result.premierWins, null);
+  });
+
+  it("reports unranked with placement wins for off-season blank Skill Group", () => {
+    // Trimmed from a real GCPD matchmaking page saved during the S4->S5 off-season.
+    const html = `
+      <table>
+        <tbody>
+          <tr><th>Matchmaking Mode</th><th>Wins</th><th>Ties</th><th>Losses</th><th>Skill Group</th><th>Last Match</th><th>Region</th></tr>
+          <tr><td>Premier</td><td>3</td><td>0</td><td>4</td><td>&nbsp;</td><td>2026-07-09 06:19:13 GMT</td><td>2</td></tr>
+          <tr><td>Competitive</td><td>148</td><td>33</td><td>134</td><td>15</td><td>2023-09-25 03:15:37 GMT</td><td>2</td></tr>
+          <tr><td>Wingman</td><td>1</td><td>0</td><td>2</td><td>&nbsp;</td><td>2024-08-02 01:00:50 GMT</td><td>2</td></tr>
+        </tbody>
+      </table>
+    `;
+    const result = parseSteamGcpdMatchmakingRating(html);
+
+    assert.equal(result.status, "unranked");
+    assert.equal(result.currentRating, null);
+    assert.equal(result.premierWins, 3);
   });
 
   it("returns needs_login for logged-out matchmaking page", () => {

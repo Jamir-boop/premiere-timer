@@ -85,9 +85,13 @@ export function parseSteamGcpdMatchmakingRating(html) {
 
   const tableRating = extractPremierSkillGroupFromMatchmakingTable(html);
   if (tableRating.foundTable) {
-    return tableRating.currentRating === null
-      ? { status: "rating_not_found", currentRating: null }
-      : { status: "ok", currentRating: tableRating.currentRating };
+    if (tableRating.currentRating !== null) {
+      return { status: "ok", currentRating: tableRating.currentRating };
+    }
+    if (tableRating.premierRowFound) {
+      return { status: "unranked", currentRating: null, premierWins: tableRating.premierWins };
+    }
+    return { status: "rating_not_found", currentRating: null };
   }
 
   const blocks = extractHtmlTextBlocks(html);
@@ -349,18 +353,19 @@ function extractHtmlTextBlocks(html) {
 function extractPremierSkillGroupFromMatchmakingTable(html) {
   const rows = extractTableRows(html);
   if (rows.length === 0) {
-    return { foundTable: false, currentRating: null };
+    return { foundTable: false, premierRowFound: false, currentRating: null, premierWins: null };
   }
 
   for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
     const headers = rows[rowIndex].cells.map(normalizeTableCell);
     const modeIndex = headers.indexOf("matchmaking mode");
     const skillGroupIndex = headers.indexOf("skill group");
+    const winsIndex = headers.indexOf("wins");
     if (modeIndex === -1 && skillGroupIndex === -1) {
       continue;
     }
     if (modeIndex === -1 || skillGroupIndex === -1) {
-      return { foundTable: true, currentRating: null };
+      return { foundTable: true, premierRowFound: false, currentRating: null, premierWins: null };
     }
 
     for (const row of rows.slice(rowIndex + 1)) {
@@ -370,14 +375,21 @@ function extractPremierSkillGroupFromMatchmakingTable(html) {
 
       return {
         foundTable: true,
-        currentRating: parseStrictRatingValue(row.cells[skillGroupIndex])
+        premierRowFound: true,
+        currentRating: parseStrictRatingValue(row.cells[skillGroupIndex]),
+        premierWins: winsIndex === -1 ? null : parseWinsValue(row.cells[winsIndex])
       };
     }
 
-    return { foundTable: true, currentRating: null };
+    return { foundTable: true, premierRowFound: false, currentRating: null, premierWins: null };
   }
 
-  return { foundTable: false, currentRating: null };
+  return { foundTable: false, premierRowFound: false, currentRating: null, premierWins: null };
+}
+
+function parseWinsValue(value) {
+  const normalized = String(value || "").replace(/[\s,]/g, "");
+  return /^\d{1,5}$/.test(normalized) ? Number.parseInt(normalized, 10) : null;
 }
 
 function extractTableRows(html) {

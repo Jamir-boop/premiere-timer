@@ -1,4 +1,4 @@
-import { formatDuration, getPremierRankInfo, getTimerState } from "../../lib/calc.js";
+import { formatDuration, getPremierRankInfo, getTimerState, PLACEMENT_WINS_TARGET } from "../../lib/calc.js";
 import { ext, sendMessage } from "../../lib/ext-api.js";
 import {
   createTranslator,
@@ -39,6 +39,7 @@ const elements = {
   ratingInput: document.querySelector("#ratingInput"),
   manualForm: document.querySelector("#manualForm"),
   manualLatest: document.querySelector("#manualLatest"),
+  clearRating: document.querySelector("#clearRating"),
   remindersEnabled: document.querySelector("#remindersEnabled"),
   languagePreference: document.querySelector("#languagePreference"),
   themeAccentColor: document.querySelector("#themeAccentColor"),
@@ -147,6 +148,14 @@ function bindEvents() {
     });
   });
 
+  elements.clearRating.addEventListener("click", async () => {
+    await runAction(t("clearRatingNewSeason"), async () => {
+      state = await sendMessage("clearRating");
+      render();
+      setMessage(t("ratingCleared"));
+    });
+  });
+
   elements.themeAccentColor.addEventListener("change", saveThemeFromInputs);
   elements.remindersEnabled.addEventListener("change", saveConfigFromInputs);
   elements.languagePreference.addEventListener("change", saveConfigFromInputs);
@@ -209,14 +218,14 @@ function render() {
   elements.statusText.textContent = statusText(timer, state);
   elements.statusDot.className = "";
   elements.statusDot.classList.add(statusClass(timer.level, state));
-  elements.onboarding.hidden = hasTimerData(state);
+  elements.onboarding.hidden = hasTimerData(state) || timer.level === "unranked";
   elements.stepAccess.classList.toggle("done", hasSteamAccess);
   elements.stepSync.classList.toggle("done", state.lastFetchStatus === "ok");
   elements.stepReady.classList.toggle("done", setupComplete);
   elements.countdown.textContent = expiry ? formatCountdown(expiry.msUntilPlayBefore) : "--";
   elements.playBefore.textContent = state.playBeforeAt
     ? t("playBefore", { value: formatDateTime(state.playBeforeAt) })
-    : t("steamSyncNeeded");
+    : timer.level === "unranked" ? t("statusUnranked") : t("steamSyncNeeded");
   elements.ratingValue.textContent = formatRating(state.currentRating);
   renderPremierRank(state.currentRating);
   elements.latestMatch.textContent = state.latestPremierMatchAt ? formatDateTime(state.latestPremierMatchAt) : "--";
@@ -253,6 +262,9 @@ function primaryActionForState(currentState, permission) {
     currentState.ratingStatus === "needs_login"
   ) {
     return { type: "open", label: t("openSteamGcpd"), busyLabel: t("openingSteamGcpd") };
+  }
+  if (currentState.ratingStatus === "unranked") {
+    return { type: "refresh", label: t("refresh"), busyLabel: t("refreshingSteam") };
   }
   if (!currentState.latestPremierMatchAt || currentState.currentRating === null || currentState.currentRating === undefined) {
     return { type: "open", label: t("syncSteamData"), busyLabel: t("openingSteamGcpd") };
@@ -471,6 +483,9 @@ function statusText(timer, currentState) {
   if (currentState.latestMatchStatus === "no_premier_matches") {
     return t("noPremierMatchFound");
   }
+  if (timer.level === "unranked") {
+    return unrankedMessage(currentState);
+  }
   if (timer.level === "unknown") {
     return t("missingData");
   }
@@ -502,6 +517,12 @@ function statusClass(level, currentState = {}) {
   return "";
 }
 
+function unrankedMessage(currentState) {
+  return Number.isInteger(currentState.premierWins)
+    ? t("unrankedSeasonProgress", { wins: currentState.premierWins, target: PLACEMENT_WINS_TARGET })
+    : t("unrankedSeason");
+}
+
 function formatRating(value) {
   return value === null || value === undefined ? "--" : Number(value).toLocaleString(translator.language);
 }
@@ -528,7 +549,8 @@ function formatStatus(status) {
     ok: "statusOk",
     pagination_unavailable: "statusPaginationUnavailable",
     rate_limited: "statusRateLimited",
-    rating_not_found: "statusRatingNotFound"
+    rating_not_found: "statusRatingNotFound",
+    unranked: "statusUnranked"
   };
   return labels[status] ? t(labels[status]) : status || t("never");
 }
@@ -588,6 +610,9 @@ function fetchStatusMessage(currentState) {
   }
   if (currentState.latestMatchStatus === "needs_login" || currentState.ratingStatus === "needs_login") {
     return t("steamLoginRequired");
+  }
+  if (currentState.ratingStatus === "unranked") {
+    return unrankedMessage(currentState);
   }
   if (currentState.latestMatchStatus === "history_scan_limited") {
     return t("historyScanLimited");

@@ -6,6 +6,7 @@ import {
   getActiveDurationDays,
   getBadgeInfo,
   getPremierRankInfo,
+  getTimerState,
   normalizeRating
 } from "../src/lib/calc.js";
 
@@ -70,5 +71,34 @@ describe("formatting and badge", () => {
       ratingNeedsUpdate: true
     });
     assert.equal(badge.text, "RATE");
+  });
+});
+
+describe("unranked season state", () => {
+  const unrankedState = {
+    ratingStatus: "unranked",
+    currentRating: null,
+    latestPremierMatchAt: "2026-07-09T06:19:13.000Z",
+    premierWins: 3
+  };
+
+  it("reports unranked timer level when Steam shows no rating", () => {
+    assert.equal(getTimerState(unrankedState).level, "unranked");
+  });
+
+  it("lets a manually saved rating override unranked status", () => {
+    const timer = getTimerState(
+      { ...unrankedState, currentRating: 12000 },
+      new Date("2026-07-10T00:00:00.000Z")
+    );
+    assert.notEqual(timer.level, "unranked");
+  });
+
+  it("shows placement progress on the badge", () => {
+    assert.equal(getBadgeInfo(unrankedState).text, "3/10");
+  });
+
+  it("shows -- on the badge without placement wins", () => {
+    assert.equal(getBadgeInfo({ ...unrankedState, premierWins: null }).text, "--");
   });
 });

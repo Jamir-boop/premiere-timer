@@ -1,4 +1,5 @@
 export const SAFETY_MARGIN_HOURS = 25;
+export const PLACEMENT_WINS_TARGET = 10;
 
 export const RATING_TIERS = [
   { min: 0, max: 2199, days: 30 },
@@ -90,6 +91,10 @@ export function computeExpiry(latestPremierMatchAt, ratingValue, now = new Date(
 }
 
 export function getTimerState(state, now = new Date()) {
+  if (state?.ratingStatus === "unranked" && (state.currentRating === null || state.currentRating === undefined)) {
+    return { level: "unranked", label: "No Premier rank yet" };
+  }
+
   if (!state?.latestPremierMatchAt || state.currentRating === null || state.currentRating === undefined) {
     return { level: "unknown", label: "Missing data" };
   }
@@ -137,6 +142,13 @@ export function getBadgeInfo(state, now = new Date()) {
   const timer = getTimerState(state, now);
   if (timer.level === "unknown") {
     return { text: "?", color: "#555555", title: "Missing data" };
+  }
+  if (timer.level === "unranked") {
+    const wins = state?.premierWins;
+    const text = Number.isInteger(wins) && wins >= 0 && wins < PLACEMENT_WINS_TARGET
+      ? `${wins}/${PLACEMENT_WINS_TARGET}`
+      : "--";
+    return { text, color: "#555555", title: timer.label };
   }
   if (timer.level === "stale_rating") {
     return { text: "RATE", color: "#FFB900", title: "Update CS Rating after latest match" };

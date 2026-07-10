@@ -538,6 +538,15 @@ function applyParsedResults(state, { matchResult = null, ratingResult = null, so
     if (ratingResult.status === "ok") {
       next = applyRating(next, ratingResult.currentRating, "steam_matchmaking", now);
     }
+    if (ratingResult.status === "unranked") {
+      next = applyPatch(next, {
+        currentRating: null,
+        ratingSource: "steam_matchmaking",
+        ratingUpdatedAt: now.toISOString(),
+        ratingNeedsUpdate: false,
+        premierWins: Number.isInteger(ratingResult.premierWins) ? ratingResult.premierWins : null
+      }, now);
+    }
   }
 
   patch.lastFetchStatus = aggregateFetchStatus(matchResult?.status, ratingResult?.status);
@@ -560,7 +569,7 @@ function aggregateFetchStatus(matchStatus, ratingStatus) {
   if (statuses.length === 0) {
     return "never";
   }
-  if (statuses.every((status) => status === "ok")) {
+  if (statuses.every((status) => status === "ok" || status === "unranked")) {
     return "ok";
   }
   if (statuses.includes("needs_login")) {
@@ -608,13 +617,25 @@ async function parseProvidedHtml(html, source = "active_tab", url = "", fallback
     state = applyParsedResults(state, { ratingResult, source, now });
     return {
       state: await saveState(state),
-      pageUpdated: ratingResult.status === "ok",
+      pageUpdated: ratingResult.status === "ok" || ratingResult.status === "unranked",
       pageType,
       status: ratingResult.status
     };
   }
 
   throw new Error("Open supported Steam GCPD page first.");
+}
+
+async function clearRating() {
+  const state = await loadState();
+  return saveState(applyPatch(state, {
+    currentRating: null,
+    ratingSource: null,
+    ratingUpdatedAt: new Date().toISOString(),
+    ratingNeedsUpdate: false,
+    ratingStatus: "unranked",
+    premierWins: null
+  }));
 }
 
 async function saveRating(ratingValue) {
@@ -752,6 +773,8 @@ export async function handleMessage(message) {
       return parseProvidedHtml(message.html, message.source, message.url);
     case "saveRating":
       return saveRating(message.rating);
+    case "clearRating":
+      return clearRating();
     case "saveManualLatest":
       return saveManualLatest(message.latestPremierMatchAt);
     case "saveTheme":

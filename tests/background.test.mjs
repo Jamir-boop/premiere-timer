@@ -237,6 +237,80 @@ describe("Steam background history scan", () => {
   });
 });
 
+describe("unranked season handling", () => {
+  const OFFSEASON_RATING_HTML = `
+    <table>
+      <tr><th>Matchmaking Mode</th><th>Wins</th><th>Skill Group</th></tr>
+      <tr><td>Premier</td><td>3</td><td>&nbsp;</td></tr>
+    </table>
+  `;
+
+  it("clears stale rating when Steam reports the Premier row unranked", async () => {
+    storageData = {
+      latestPremierMatchAt: "2026-05-01T19:11:00.000Z",
+      latestPremierMatchSource: "steam_gcpd_fetch",
+      currentRating: 21345,
+      ratingSource: "steam_matchmaking"
+    };
+    fetchMock = (url) => {
+      const parsed = new URL(url);
+      if (parsed.searchParams.get("tab") === "matchmaking") {
+        return htmlResponse(OFFSEASON_RATING_HTML, url);
+      }
+      return htmlResponse(matchRow("May 1, 2026 @ 7:11pm GMT"), url);
+    };
+
+    const result = await refreshFromSteam({ matchHistoryLoadMoreDelayMs: 0 });
+
+    assert.equal(result.ratingStatus, "unranked");
+    assert.equal(result.currentRating, null);
+    assert.equal(result.premierWins, 3);
+    assert.equal(result.playBeforeAt, null);
+    assert.equal(result.expirationAtEstimate, null);
+    assert.equal(result.lastFetchStatus, "ok");
+  });
+
+  it("restores the timer when a rating appears again", async () => {
+    storageData = {
+      latestPremierMatchAt: "2026-05-01T19:11:00.000Z",
+      currentRating: null,
+      ratingStatus: "unranked",
+      premierWins: 9
+    };
+    fetchMock = (url) => {
+      const parsed = new URL(url);
+      if (parsed.searchParams.get("tab") === "matchmaking") {
+        return htmlResponse(RATING_HTML, url);
+      }
+      return htmlResponse(matchRow("May 1, 2026 @ 7:11pm GMT"), url);
+    };
+
+    const result = await refreshFromSteam({ matchHistoryLoadMoreDelayMs: 0 });
+
+    assert.equal(result.ratingStatus, "ok");
+    assert.equal(result.currentRating, 14250);
+    assert.equal(result.premierWins, null);
+    assert.ok(result.playBeforeAt);
+  });
+
+  it("clearRating message resets the timer to unranked", async () => {
+    storageData = {
+      latestPremierMatchAt: "2026-05-01T19:11:00.000Z",
+      currentRating: 15000,
+      ratingSource: "steam_matchmaking",
+      premierWins: 2
+    };
+
+    const result = await handleMessage({ type: "clearRating" });
+
+    assert.equal(result.currentRating, null);
+    assert.equal(result.ratingStatus, "unranked");
+    assert.equal(result.premierWins, null);
+    assert.equal(result.playBeforeAt, null);
+    assert.equal(result.latestPremierMatchAt, "2026-05-01T19:11:00.000Z");
+  });
+});
+
 describe("openGcpd guided tabs", () => {
   it("waits for guided tabs to parse before returning state", async () => {
     const createdTabs = [];
