@@ -109,7 +109,18 @@ pnpm build           # production builds in .output/{chrome,firefox}-mv3/
 node scripts/update-version.mjs <semver>   # interactive version bump (package.json is the single source)
 ```
 
+## Version Bumping
+
+Rules:
+
+- Refactor or fix (no new user-facing behavior): stay on `main`, bump patch
+  (`x.x.+1`). Example: `0.3.2` → `0.3.3`.
+- New feature or addition to existing feature: stay on `main`, bump minor
+  (`x.+1.0`). Example: `0.3.3` → `0.4.0`.
+- Never create a new branch unless the user explicitly asks for one.
+
 Conventions:
+
 - Version lives only in `package.json`; WXT injects it into manifests. Bump patch for fixes, minor for features, in the same commit.
 - Tests are plain `node:test`, no frameworks. Every non-trivial fix ships with a regression test. i18n key parity (en/es) and referenced-key existence are test-enforced — add both languages or the suite fails.
 - No remote resources of any kind (fonts, scripts, CDNs). The privacy promise is "runs entirely in your browser"; the manifest has no CSP override and must not need one.
